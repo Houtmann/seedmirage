@@ -48,6 +48,8 @@ type Outdated struct {
 	Embedded string
 	// Source est l'URL interrogée.
 	Source string
+	// ReleaseURL est la page publique des versions du client (lisible par un humain).
+	ReleaseURL string
 }
 
 type kind int
@@ -63,6 +65,14 @@ type source struct {
 	kind   kind
 	// tag extrait la version (groupe 1) d'un nom de tag de version stable.
 	tag *regexp.Regexp
+}
+
+// pageURL renvoie la page web des versions du dépôt (les tags pour les dépôts sans release).
+func (s source) pageURL() string {
+	if s.kind == kindTags {
+		return "https://github.com/" + s.repo + "/tags"
+	}
+	return "https://github.com/" + s.repo + "/releases/latest"
 }
 
 var sources = []source{
@@ -135,7 +145,7 @@ func (c *Checker) Check(ctx context.Context, embedded []Embedded) ([]Outdated, e
 		}
 		have := best[s.family]
 		if have == "" || emulation.CompareVersions(latest, have) > 0 {
-			out = append(out, Outdated{Family: s.family, Latest: latest, Embedded: have, Source: src})
+			out = append(out, Outdated{Family: s.family, Latest: latest, Embedded: have, Source: src, ReleaseURL: s.pageURL()})
 		}
 	}
 	slices.SortFunc(out, func(a, b Outdated) int { return strings.Compare(a.Family, b.Family) })

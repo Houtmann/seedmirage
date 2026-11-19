@@ -249,6 +249,18 @@ than the most recent embedded profile (or that have no profile). Network access 
 (`New(Config{...}).Check(ctx, embedded)`, base URL and `http.Client` injectable). The same check is available from the
 *Profiles* page of the interface.
 
+Options: `--format text|json` (default `text`; `json` prints a list of `{family, embedded, latest, url}`, `[]` when up to date).
+Exit codes: `0` up to date, `1` error, `2` usage, `3` at least one family is behind.
+
+### Weekly watch
+
+The `Client versions` workflow (`client-versions.yml`, every Monday and on demand) runs
+`profiles outdated --online --format json` and, for each family that is behind, opens **one** issue titled
+`Client update: <family> <version>` with the `profiles` label (created if missing). It first looks for an existing issue
+with that exact title, open **or closed**, so a version is never reported twice. The issue links to the client's release page
+and lists the update procedure (capture, profile, golden files, release; see below). It only uses the workflow's
+own token (`contents: read`, `issues: write`). Profile generation stays manual.
+
 ## Adding a profile
 
 1. **Capture**: `seedmirage capture` against the real client, or read its source code (an exact tag) and note in `references` every file and line range read.
