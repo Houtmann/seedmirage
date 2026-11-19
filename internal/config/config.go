@@ -75,6 +75,7 @@ type Caps struct {
 	LineMax       int     `json:"lineMax"`       // KiB/s, declared upstream line, 0 = unlimited
 	DailyRatioMax float64 `json:"dailyRatioMax"` // upload over 24 h <= ratio x size, 0 = off
 	SwarmShare    float64 `json:"swarmShare"`    // max share of the swarm demand, in ]0,1]
+	SwarmBudget   bool    `json:"swarmBudget"`   // bound upload by what the swarm could have downloaded
 }
 
 // Defaults returns a valid configuration (Port is 0: it is drawn by EnsurePort).
@@ -90,7 +91,7 @@ func Defaults() Config {
 		Selection:          SelectionSwarm,
 		RotateIdleAfter:    Duration(6 * time.Hour),
 		SpeedModel:         SpeedModelSmooth,
-		Caps:               Caps{PerLeecherMax: 500, SwarmShare: 0.5},
+		Caps:               Caps{PerLeecherMax: 500, SwarmShare: 0.5, SwarmBudget: true},
 		Schedule:           Schedule{Hourly: DefaultHourly()},
 		AutoStart:          true,
 		UpdateCheck:        true,

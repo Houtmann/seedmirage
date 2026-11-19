@@ -32,6 +32,12 @@ type Caps struct {
 	// SwarmShare : part maximale de la demande de l'essaim, ]0,1]
 	// (0 = pas de borne de demande).
 	SwarmShare float64
+	// SwarmBudget enables the demand budget (see SwarmBudget): upload over the
+	// sliding window stays compatible with what the swarm could download.
+	SwarmBudgetOn bool
+	// SwarmProgress is the assumed average progress of a leecher, ]0,1]
+	// (0 = DefaultSwarmProgress).
+	SwarmProgress float64
 }
 
 // DefaultCaps renvoie les plafonds par défaut de la spécification.

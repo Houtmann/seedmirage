@@ -114,6 +114,8 @@
   "settings.caps.lineMax.label": "Declared uplink (KiB/s)",
   "settings.caps.perLeecherMax.help": "Maximum speed reported for one leecher; 0 = no cap.",
   "settings.caps.perLeecherMax.label": "Cap per leecher (KiB/s)",
+  "settings.caps.swarmBudget.help": "Upload over 24 h stays within what the swarm could plausibly have downloaded (leechers and completions, scaled by your share of the swarm).",
+  "settings.caps.swarmBudget.label": "Bound upload by swarm demand",
   "settings.caps.swarmShare.help": "Share of the swarm's demand that one torrent can absorb, in ]0 ; 1].",
   "settings.caps.swarmShare.label": "Maximum swarm share",
   "settings.hourAria": "Multiplier at %s",

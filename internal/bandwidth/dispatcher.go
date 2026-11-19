@@ -60,7 +60,8 @@ type entry struct {
 	noise             float64       // facteur de bruit lissé (1 = neutre)
 	size              int64         // taille du torrent (0 : inconnue)
 	interval          time.Duration // dernier intervalle d'annonce (0 : inconnu)
-	win               *window       // upload sur 24 h (si DailyRatioMax > 0)
+	win               *window       // upload sur 24 h (si DailyRatioMax > 0 ou budget d'essaim)
+	comp              []compSample  // completions counter history (tracker scrape), for the swarm budget
 
 	// Téléchargement simulé : sim est vrai après SetProgress. Tant que
 	// progress < size, le torrent « télécharge » à dlSpeed et son upload est
@@ -149,6 +150,17 @@ func (d *Dispatcher) UpdatePeers(h Hash, seeders, leechers int) {
 	d.mutate(func() {
 		if e, ok := d.torrents[h]; ok {
 			e.seeders, e.leechers = seeders, leechers
+		}
+	})
+}
+
+// UpdateCompletions records the tracker's cumulative completions counter
+// ("downloaded" of a scrape) for a registered torrent. It feeds the completions
+// term of the swarm budget; without it only the leechers term applies.
+func (d *Dispatcher) UpdateCompletions(h Hash, total int64) {
+	d.mutate(func() {
+		if e, ok := d.torrents[h]; ok {
+			e.comp = recordCompletions(e.comp, d.clk.Now(), total)
 		}
 	})
 }
@@ -373,7 +385,7 @@ func downloadRate(seeders int, minRate, maxRate int64) int64 {
 // recordLocked ajoute n octets à l'historique 24 h du torrent (si le ratio
 // journalier est actif).
 func (d *Dispatcher) recordLocked(e *entry, now time.Time, n int64) {
-	if d.caps.DailyRatioMax <= 0 || n <= 0 {
+	if (d.caps.DailyRatioMax <= 0 && !d.caps.SwarmBudgetOn) || n <= 0 {
 		return
 	}
 	if e.win == nil {
@@ -426,6 +438,11 @@ func (d *Dispatcher) recalcLocked(now time.Time) *notification {
 			up24 = e.win.sum(now)
 		}
 		caps[i] = d.caps.TorrentCap(e.leechers, e.size, e.interval, up24, d.tick)
+		// Extra bound: what the swarm can plausibly have downloaded (never
+		// raises a cap, only lowers it; the excess is redistributed below).
+		if budget, ok := d.caps.SwarmBudget(e.size, e.seeders, e.leechers, completionsDelta(e.comp, now)); ok {
+			caps[i] = min(caps[i], swarmRate(budget, up24, d.tick))
+		}
 	}
 	speeds := allocateCapped(global, weights, caps)
 

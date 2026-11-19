@@ -297,7 +297,7 @@ func TestLoadCapsBackwardCompatible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Caps.LineMax != 2000 || c.Caps.DailyRatioMax != 2 || c.Caps.PerLeecherMax != 500 || c.Caps.SwarmShare != 0.5 {
+	if c.Caps.LineMax != 2000 || c.Caps.DailyRatioMax != 2 || c.Caps.PerLeecherMax != 500 || c.Caps.SwarmShare != 0.5 || !c.Caps.SwarmBudget {
 		t.Fatalf("caps = %+v", c.Caps)
 	}
 }

@@ -385,6 +385,8 @@ func capsOf(cfg config.Config) bandwidth.Caps {
 		LineMax:       int64(cfg.Caps.LineMax) * bytesPerKiB,
 		DailyRatioMax: cfg.Caps.DailyRatioMax,
 		SwarmShare:    cfg.Caps.SwarmShare,
+		SwarmBudgetOn: cfg.Caps.SwarmBudget,
+		SwarmProgress: bandwidth.DefaultSwarmProgress,
 	}
 }
 

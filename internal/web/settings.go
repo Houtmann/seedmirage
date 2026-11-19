@@ -276,6 +276,7 @@ func settingsSections() []sectionDef {
 			intField("caps.lineMax", func(c *config.Config) *int { return &c.Caps.LineMax }),
 			floatField("caps.dailyRatioMax", func(c *config.Config) *float64 { return &c.Caps.DailyRatioMax }),
 			floatField("caps.swarmShare", func(c *config.Config) *float64 { return &c.Caps.SwarmShare }),
+			boolField("caps.swarmBudget", func(c *config.Config) *bool { return &c.Caps.SwarmBudget }),
 			boolField("simulateDownload", func(c *config.Config) *bool { return &c.SimulateDownload }),
 			intField("minDownloadRate", func(c *config.Config) *int { return &c.MinDownloadRate }),
 			intField("maxDownloadRate", func(c *config.Config) *int { return &c.MaxDownloadRate }),

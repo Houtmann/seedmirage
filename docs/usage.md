@@ -119,6 +119,7 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 | Declared uplink, KiB/s (`caps.lineMax`) | Cap on the global speed, as if it were your line speed. `0` = unlimited. | 0 |
 | Maximum ratio per 24 h (`caps.dailyRatioMax`) | Upload over 24 hours stays under this ratio times the torrent size. `0` = disabled. | 0 |
 | Maximum swarm share (`caps.swarmShare`) | Share of the swarm's demand one torrent can absorb, in ]0 ; 1]. | 0.5 |
+| Bound upload by swarm demand (`caps.swarmBudget`) | Over 24 hours a torrent uploads at most your share of what its swarm could have downloaded: `share × (completions × size + leechers × size × 0.5)`, where `share = min(1/(seeders+1), swarmShare)`. Completions are only counted when the tracker reports them. The speed fades towards 0 as the budget is used up. | on |
 | Simulate a download (`simulateDownload`) | A torrent seen for the first time first "downloads", then seeds. Applies to torrents added afterwards. | off |
 | Minimum / maximum download, KiB/s (`minDownloadRate`, `maxDownloadRate`) | Bounds of the simulated download speed. | 100 / 2000 |
 

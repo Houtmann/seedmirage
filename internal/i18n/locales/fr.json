@@ -114,6 +114,8 @@
   "settings.caps.lineMax.label": "Ligne montante déclarée (Kio/s)",
   "settings.caps.perLeecherMax.help": "Vitesse maximale rapportée à un leecher ; 0 = sans plafond.",
   "settings.caps.perLeecherMax.label": "Plafond par leecher (Kio/s)",
+  "settings.caps.swarmBudget.help": "L'upload sur 24 h reste compatible avec ce que l'essaim a pu télécharger (leechers et complétions, pondérés par votre part de l'essaim).",
+  "settings.caps.swarmBudget.label": "Borner l'upload par la demande de l'essaim",
   "settings.caps.swarmShare.help": "Part de la demande de l'essaim qu'un torrent peut absorber, dans ]0 ; 1].",
   "settings.caps.swarmShare.label": "Part maximale de l'essaim",
   "settings.hourAria": "Coefficient à %s",

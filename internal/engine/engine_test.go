@@ -50,6 +50,7 @@ func baseConfig() config.Config {
 	cfg.MaxActiveTorrents = 2
 	cfg.Selection = config.SelectionRandom // pas de scrape dans les tests qui comptent les requêtes ; SwarmSelector : scrape_test.go
 	cfg.Profile = "qbittorrent-5.3.0"
+	cfg.Caps.SwarmBudget = false // the swarm budget has its own test (swarm_budget_test.go)
 	return cfg
 }
 

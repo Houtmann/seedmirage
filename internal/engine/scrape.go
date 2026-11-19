@@ -305,6 +305,9 @@ func (e *Engine) scrapeBatch(ctx context.Context, host string, items []scrapeIte
 	for _, h := range hashes {
 		if st, ok := res[h]; ok {
 			e.cache.Set(h, st.Seeders, st.Leechers)
+			// Only registered (active) torrents are known to the dispatcher: this
+			// feeds the swarm budget's completions term when a tracker gives it.
+			e.disp.UpdateCompletions(bandwidth.Hash(h), int64(st.Downloaded))
 			minReq = max(minReq, st.MinRequestInterval)
 			known++
 		}
