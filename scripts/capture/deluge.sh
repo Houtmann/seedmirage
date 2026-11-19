@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Pilote le Deluge du profil compose « deluge » (JSON-RPC du WebUI, mot de passe par défaut « deluge ») selon la procédure de docs/capture.md.
-# Usage : scripts/capture/deluge.sh <dossier de capture>
+# Drives the Deluge of the "deluge" compose profile (WebUI JSON-RPC, default password "deluge") following the procedure in docs/capture.md.
+# Usage: scripts/capture/deluge.sh <capture dir>
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-# libtorrent borne l'intervalle d'annonce à 5 minutes (min_announce_interval) : l'intervalle de 60 s du tracker de capture est ignoré.
+# libtorrent clamps the announce interval to 5 minutes (min_announce_interval): the capture tracker's 60 s interval is ignored.
 INTERVAL="${INTERVAL:-300}"
 source scripts/capture/lib.sh
-DIR="${1:?dossier de capture}"
+DIR="${1:?capture dir}"
 COMPOSE=(docker compose -f deploy/capture/docker-compose.yml --profile deluge)
 URL=http://127.0.0.1:8112/json
 JAR="$(mktemp)"
 N=0
 
-# call <méthode> '<params json>' : un appel JSON-RPC du WebUI.
+# call <method> '<params json>': one WebUI JSON-RPC call.
 call() { N=$((N + 1)); curl -s -b "$JAR" -c "$JAR" -H 'Content-Type: application/json' -d "{\"method\":\"$1\",\"params\":$2,\"id\":$N}" "$URL"; }
 login() {
   wait_http "$URL" 60
   call auth.login '["deluge"]' | grep -q '"result": *true'
-  # Se connecter au démon (le premier hôte enregistré).
+  # Connect to the daemon (the first registered host).
   local host
   host="$(call web.get_hosts '[]' | python3 -c 'import sys,json;print(json.load(sys.stdin)["result"][0][0])')"
   call web.connect "[\"$host\"]" > /dev/null
@@ -25,31 +25,31 @@ login() {
 }
 hashes() { call web.update_ui '[["name"],{}]' | python3 -c 'import sys,json;print(" ".join(json.load(sys.stdin)["result"]["torrents"].keys()))'; }
 
-step "connexion"
+step "login"
 login
 for t in $(torrents "$DIR"); do
   b64="$(base64 < "$t" | tr -d '\n')"
   call core.add_torrent_file "[\"$(basename "$t")\",\"$b64\",{\"download_location\":\"/downloads\"}]" > /dev/null
 done
-step "torrents ajoutés : $(hashes)"
+step "torrents added: $(hashes)"
 
-wait_for $((INTERVAL + 30)) "une annonce régulière (libtorrent : 5 min mini)"
+wait_for $((INTERVAL + 30)) "one regular announce (libtorrent: 5 min minimum)"
 first="$(hashes | cut -d' ' -f1)"
-step "pause / reprise de $first"
+step "pause / resume of $first"
 call core.pause_torrent "[[\"$first\"]]" > /dev/null
 wait_for 10 "pause"
 call core.resume_torrent "[[\"$first\"]]" > /dev/null
-wait_for 15 "reprise"
+wait_for 15 "resume"
 
-step "redémarrage du client"
+step "client restart"
 "${COMPOSE[@]}" stop -t 15 deluge
-wait_for 10 "client arrêté"
+wait_for 10 "client stopped"
 "${COMPOSE[@]}" start deluge
 login
-wait_for $((INTERVAL + 20)) "annonce régulière après redémarrage"
+wait_for $((INTERVAL + 20)) "regular announce after restart"
 
-step "retrait des torrents"
+step "removing the torrents"
 for h in $(hashes); do call core.remove_torrent "[\"$h\",false]" > /dev/null; done
 wait_for 10 "stopped"
 rm -f "$JAR"
-step "terminé : Ctrl-C dans seedmirage capture"
+step "done: Ctrl-C in seedmirage capture"

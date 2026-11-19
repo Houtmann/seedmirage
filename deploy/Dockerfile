@@ -1,4 +1,4 @@
-# seedmirage : image locale (build depuis la racine du dépôt : make docker).
+# seedmirage: local image (build from the repository root: make docker).
 FROM golang:1.26 AS build
 ARG VERSION=dev
 WORKDIR /src
@@ -12,9 +12,9 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}"
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/seedmirage /seedmirage
-# Dossier de données vide, lisible par l'utilisateur nonroot (volume nommé ou bind mount).
+# Empty data directory, writable by the nonroot user (named volume or bind mount).
 COPY --from=build --chown=65532:65532 /out/data /data
-# Le conteneur est isolé : l'exposition réelle dépend du port publié (127.0.0.1 dans docker-compose.yml).
+# The container is isolated: real exposure depends on the published port (127.0.0.1 in compose.yaml).
 ENV SEEDMIRAGE_LISTEN=0.0.0.0:7070 \
     SEEDMIRAGE_IN_CONTAINER=1 \
     SEEDMIRAGE_LOG_FORMAT=json

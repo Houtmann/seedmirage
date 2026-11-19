@@ -1,21 +1,21 @@
-# Clients BitTorrent réels pour le mode capture : un client à la fois, via les profils compose.
+# Real BitTorrent clients for capture mode: one client at a time, through compose profiles.
 #
 #   seedmirage capture --listen 0.0.0.0:6969 --announce-host host.docker.internal:6969 --out ./capture
 #   docker compose -f deploy/capture/docker-compose.yml --profile qbittorrent up -d
 #
-# Le tracker de capture tourne sur l'hôte ; les conteneurs le joignent par host.docker.internal
-# (extra_hosts ci-dessous). 0.0.0.0 expose le tracker sur toutes les interfaces de l'hôte :
-# préférer l'adresse du pont Docker (ex. --listen 172.17.0.1:6969) ou un pare-feu, et arrêter
-# la capture ensuite. Voir docs/capture.md.
+# The capture tracker runs on the host; the containers reach it through host.docker.internal
+# (extra_hosts below). 0.0.0.0 exposes the tracker on every host interface:
+# prefer the Docker bridge address (e.g. --listen 172.17.0.1:6969) or a firewall, and stop
+# the capture afterwards. See docs/capture.md.
 #
-# Versions épinglées : une capture décrit UNE version précise du client. Les tags ci-dessous
-# n'ont pas pu être vérifiés au moment de l'écriture (pas d'accès à un daemon Docker) :
-# contrôler qu'ils existent et que `docker compose ... logs` annonce bien la version attendue,
-# puis ajuster le tag ET le nom du profil produit.
+# Pinned versions: a capture describes ONE precise client version. The tags below
+# could not be verified when this was written (no Docker daemon available):
+# check that they exist and that `docker compose ... logs` reports the expected version,
+# then adjust the tag AND the name of the resulting profile.
 #
-# Les torrents factices n'ont aucune donnée : le client apparaît comme leecher (left > 0).
-# Dans chaque client, ajouter les .torrent de ./capture SANS lancer de vérification de
-# fichiers ni de téléchargement réel.
+# The fake torrents have no data: the client shows up as a leecher (left > 0).
+# In each client, add the .torrent files from ./capture WITHOUT starting a file check
+# or a real download.
 
 x-capture-client: &client
   restart: "no"
@@ -35,7 +35,7 @@ services:
       <<: *env
       WEBUI_PORT: "8080"
     ports:
-      - "127.0.0.1:8080:8080"   # interface web : ajouter les .torrent ici
+      - "127.0.0.1:8080:8080"   # web UI: add the .torrent files here
     volumes:
       - ./config/qbittorrent:/config
       - ../../capture:/torrents:ro
@@ -48,7 +48,7 @@ services:
       - "127.0.0.1:9091:9091"
     volumes:
       - ./config/transmission:/config
-      - ../../capture:/watch   # dépôt automatique des .torrent
+      - ../../capture:/watch   # watch folder: .torrent files are added automatically
 
   deluge:
     <<: *client
@@ -66,10 +66,10 @@ services:
   rtorrent:
     <<: *client
     profiles: ["rtorrent"]
-    # Pas d'image linuxserver.io pour rTorrent seul : image communautaire, tag à vérifier.
+    # No linuxserver.io image for rTorrent alone: community image, check the tag.
     image: crazymax/rtorrent-rutorrent:5.3.18-0.16.25
     ports:
       - "127.0.0.1:8081:8080"   # ruTorrent (RPC2 compris)
     volumes:
       - ./config/rtorrent:/data
-      # Dossier surveillé : ./config/rtorrent/rtorrent/watch (scripts/capture/rtorrent.sh y copie les .torrent).
+      # Watched folder: ./config/rtorrent/rtorrent/watch (scripts/capture/rtorrent.sh copies the .torrent files there).

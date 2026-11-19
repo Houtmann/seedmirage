@@ -1,5 +1,5 @@
-# Tailwind CSS standalone v4.3.3 : sommes publiées dans sha256sums.txt de la release.
-# Format : <sha256>  <nom de l'asset>
+# Tailwind CSS standalone v4.3.3: sums published in sha256sums.txt of the release.
+# Format: <sha256>  <asset name>
 cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d  tailwindcss-macos-arm64
 7922e0953f2110c05976e3bf58f14e643d90427575e766b7d433f5f80cbee7e1  tailwindcss-macos-x64
 dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a  tailwindcss-linux-x64

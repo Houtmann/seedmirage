@@ -1,10 +1,10 @@
-// Commande reduce : prépare une capture (sortie de `seedmirage capture`) pour qu'elle serve de fixture de test.
+// Command reduce prepares a capture (the output of `seedmirage capture`) so it can serve as a test fixture.
 //
-//	go run ./scripts/capture/reduce <dossier de capture> <dossier de sortie>
+//	go run ./scripts/capture/reduce <capture dir> <output dir>
 //
-// Elle ne garde que les annonces (HTTP /announce et UDP BEP 15 : pas les scrapes ni les connect),
-// remplace les adresses IP publiques annoncées par les clients (paramètres ip, ipv4, ipv6) par des
-// adresses de documentation et copie manifest.json. Le profil déduit (<famille>-<version>.json) est copié tel quel.
+// It keeps only the announces (HTTP /announce and UDP BEP 15: no scrapes or connects),
+// replaces the public IP addresses announced by the clients (ip, ipv4, ipv6 parameters) with
+// documentation addresses and copies manifest.json. The inferred profile (<family>-<version>.json) is copied as is.
 package main
 
 import (
@@ -33,7 +33,7 @@ func scrub(s string) string {
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage : reduce <dossier de capture> <dossier de sortie>")
+		fmt.Fprintln(os.Stderr, "usage: reduce <capture dir> <output dir>")
 		os.Exit(2)
 	}
 	if err := run(os.Args[1], os.Args[2]); err != nil {
@@ -43,7 +43,7 @@ func main() {
 }
 
 func run(in, out string) error {
-	f, err := os.Open(filepath.Join(in, capture.RawFile)) //nolint:gosec // outil local, dossier choisi par l'utilisateur
+	f, err := os.Open(filepath.Join(in, capture.RawFile)) //nolint:gosec // local tool, directory chosen by the user
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func run(in, out string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(out, 0o750); err != nil { //nolint:gosec // outil local
+	if err := os.MkdirAll(out, 0o750); err != nil { //nolint:gosec // local tool
 		return err
 	}
 	var buf []byte
@@ -81,30 +81,30 @@ func run(in, out string) error {
 		buf = append(buf, append(b, '\n')...)
 		kept++
 	}
-	if err := os.WriteFile(filepath.Join(out, capture.RawFile), buf, 0o600); err != nil { //nolint:gosec // outil local
+	if err := os.WriteFile(filepath.Join(out, capture.RawFile), buf, 0o600); err != nil { //nolint:gosec // local tool
 		return err
 	}
 	for _, name := range []string{capture.ManifestFile} {
-		b, err := os.ReadFile(filepath.Join(in, name)) //nolint:gosec // outil local
+		b, err := os.ReadFile(filepath.Join(in, name)) //nolint:gosec // local tool
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(out, name), b, 0o600); err != nil { //nolint:gosec // outil local
+		if err := os.WriteFile(filepath.Join(out, name), b, 0o600); err != nil { //nolint:gosec // local tool
 			return err
 		}
 	}
 	profiles, _ := filepath.Glob(filepath.Join(in, "*.json"))
 	for _, p := range profiles {
 		if base := filepath.Base(p); base != capture.ManifestFile {
-			b, err := os.ReadFile(p) //nolint:gosec // outil local
+			b, err := os.ReadFile(p) //nolint:gosec // local tool
 			if err != nil {
 				return err
 			}
-			if err := os.WriteFile(filepath.Join(out, "captured-profile.json"), b, 0o600); err != nil { //nolint:gosec // outil local
+			if err := os.WriteFile(filepath.Join(out, "captured-profile.json"), b, 0o600); err != nil { //nolint:gosec // local tool
 				return err
 			}
 		}
 	}
-	fmt.Printf("%d annonces conservées sur %d enregistrements\n", kept, len(recs))
+	fmt.Printf("%d announces kept out of %d records\n", kept, len(recs))
 	return nil
 }

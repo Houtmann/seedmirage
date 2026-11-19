@@ -58,7 +58,7 @@
     var common = { stroke: p.text, grid: { stroke: p.grid, width: 1 }, ticks: { stroke: p.grid, width: 1 }, font: "11px sans-serif" };
     return [
       Object.assign({}, common, {
-        space: 60,
+        space: 90,
         // Dates et heures dans la langue de la page (<html lang>), pas dans celle d'uPlot.
         values: function (u, splits, axisIdx, foundSpace, foundIncr) {
           var opts = { hour: "2-digit", minute: "2-digit" };
@@ -79,7 +79,7 @@
         },
       }),
       Object.assign({}, common, {
-        size: 64,
+        size: 76,
         values: function (u, vals) {
           return vals.map(function (v) {
             return fmtBytes(v) + unit;

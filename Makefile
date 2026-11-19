@@ -27,32 +27,32 @@ vet:
 
 check: fmt-check vet lint test css-check build public-check
 
-# Outillage front : exécutable autonome Tailwind v4 (sans Node), version et sha256 épinglés (tools/).
+# Front-end tooling: standalone Tailwind v4 executable (no Node), version and sha256 pinned (tools/).
 tools:
 	sh tools/fetch-tailwind.sh
 
-# Génère internal/web/static/ui.css (commité) à partir d'input.css et des templates.
+# Generates internal/web/static/ui.css (committed) from input.css and the templates.
 css:
 	bin/tailwindcss -i internal/web/input.css -o internal/web/static/ui.css --minify
 
-# ui.css doit être à jour. Sauté (avec message) si bin/tailwindcss est absent, sauf en CI (CI=true).
+# ui.css must be up to date. Skipped (with a message) if bin/tailwindcss is missing, except in CI (CI=true).
 css-check:
 	@if [ ! -x bin/tailwindcss ]; then \
-	  if [ "$$CI" = "true" ]; then echo "css-check: bin/tailwindcss absent (make tools)"; exit 1; fi; \
-	  echo "css-check sauté : bin/tailwindcss absent (make tools)"; \
+	  if [ "$$CI" = "true" ]; then echo "css-check: bin/tailwindcss missing (make tools)"; exit 1; fi; \
+	  echo "css-check skipped: bin/tailwindcss missing (make tools)"; \
 	else \
 	  tmp=$$(mktemp); \
 	  bin/tailwindcss -i internal/web/input.css -o "$$tmp" --minify >/dev/null 2>&1 \
 	    && cmp -s "$$tmp" internal/web/static/ui.css; st=$$?; \
 	  rm -f "$$tmp"; \
-	  if [ $$st -ne 0 ]; then echo "css-check : ui.css n'est pas à jour, lancer make css"; exit 1; fi; \
+	  if [ $$st -ne 0 ]; then echo "css-check: ui.css is out of date, run make css"; exit 1; fi; \
 	fi
 
-# Image locale (contexte = racine du dépôt). Pour lancer : make up.
+# Local image (context = repository root). To run it: make up.
 docker:
 	docker build -f deploy/Dockerfile --build-arg VERSION=$(VERSION) -t seedmirage:dev .
 
-# Compose racine : construit l'image depuis les sources puis la lance (voir docs/docker.md).
+# Root compose: builds the image from the sources, then starts it (see docs/docker.md).
 up:
 	@mkdir -p data
 	docker compose up -d --build
@@ -60,10 +60,10 @@ up:
 down:
 	docker compose down
 
-# Binaires multi-OS (darwin arm64/amd64, linux amd64/arm64, windows amd64) : archives + SHA256SUMS dans dist/.
+# Multi-OS binaries (darwin arm64/amd64, linux amd64/arm64, windows amd64): archives + SHA256SUMS in dist/.
 dist:
 	sh tools/dist.sh $(VERSION)
 
-# Le dépôt est public : rien de personnel ni d'interne dans les fichiers suivis (tools/public-check.sh).
+# The repository is public: nothing personal or internal in tracked files (tools/public-check.sh).
 public-check:
 	sh tools/public-check.sh
