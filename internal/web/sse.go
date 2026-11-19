@@ -156,6 +156,17 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+			if ev.Type == events.UpdateAvailable {
+				html, err := s.updateOOB(lang, r)
+				if err != nil {
+					s.log.Error("render update notice", "err", err)
+					continue
+				}
+				if err := writeSSE(w, rc, "toast", html); err != nil { // out-of-band swap into the layout's notice slot
+					return
+				}
+				continue
+			}
 			if t, ok := toastFor(lang, ev); ok {
 				html, err := s.renderFragment(lang, "toast", t)
 				if err != nil {

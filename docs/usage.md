@@ -136,6 +136,7 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 | Setting | Meaning | Default |
 |---|---|---|
 | Tolerated tracker failures (`maxTrackerFailures`) | Consecutive failures after which a torrent is dropped. Only applies to torrents started afterwards. | 5 |
+| Check for updates (`updateCheck`) | Look for a newer release once a day (see [Update notice](#update-notice)). Applies at once. | on |
 
 ## Statistics and status
 
@@ -144,9 +145,30 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 - **Statistics**: upload per hour over 24 hours, 7 days or 30 days, global speed over the last 10 minutes, global ratio, the ten
   torrents with the most cumulative upload, and announces and failures per tracker host (since startup).
 - **Status**: version, uptime, data folder, active profile, memory and goroutines, latest warnings and errors. It also tells
-  whether `GET /metrics` is enabled.
+  whether `GET /metrics` is enabled, and the state of the update check (last check, error if any).
 
 All pages update live over a single event stream; no refresh is needed.
+
+## Update notice
+
+seedmirage tells you when a newer stable release exists; it never downloads or installs anything. About a minute after
+startup, then every 24 hours, it makes **one** request, the only one that is not a tracker announce:
+
+```
+GET https://api.github.com/repos/Houtmann/seedmirage/releases/latest
+User-Agent: seedmirage/<your version>
+```
+
+Nothing else is sent: no identifier, token or setting (only `Accept` and, to save the API quota, `If-None-Match`). The answer
+is read with a 1 MiB limit; pre-releases are ignored. A failure is only logged at `debug` level and retried at the next slot.
+Development builds (`dev`, `-dirty`) never check.
+
+When a newer version exists, a notice with its release notes appears at the top of every page; **Hide** hides it for that
+version only (a cookie). Outside a container it links to the release page; in a Docker container it shows
+`docker compose pull && docker compose up -d` instead.
+
+To turn it off: untick **Check for updates** in *Settings* (`"updateCheck": false` in `config.json`, applied at once), or start
+with `--no-update-check` (`SEEDMIRAGE_NO_UPDATE_CHECK=1`) for one run.
 
 ## Clean shutdown
 

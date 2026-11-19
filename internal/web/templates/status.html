@@ -6,6 +6,7 @@
       <h1 class="card-title text-base">{{t "status.process"}}</h1>
       <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         <div><dt class="opacity-70">{{t "status.version"}}</dt><dd>{{.Data.Version}}</dd></div>
+        <div class="min-w-0"><dt class="opacity-70">{{t "status.update"}}</dt><dd>{{.Data.Update}}{{if .Data.LastCheck}} <span class="opacity-70">({{t "status.lastCheck"}} {{.Data.LastCheck}})</span>{{end}}{{if .Data.UpdateErr}} <span class="text-warning break-all">{{.Data.UpdateErr}}</span>{{end}}</dd></div>
         <div><dt class="opacity-70">{{t "status.uptime"}}</dt><dd>{{.Data.Uptime}}</dd></div>
         <div class="min-w-0"><dt class="opacity-70">{{t "status.dataDir"}}</dt><dd class="break-all">{{.Data.DataDir}}</dd></div>
         <div><dt class="opacity-70">{{t "status.profile"}}</dt><dd>{{if .Data.Profile}}{{.Data.Profile}}{{else}}—{{end}}</dd></div>

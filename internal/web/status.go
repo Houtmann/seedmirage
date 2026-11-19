@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"seedmirage/internal/engine"
 	"seedmirage/internal/i18n"
 	"seedmirage/internal/logring"
 )
@@ -33,7 +34,11 @@ type statusView struct {
 	MemAlloc   string
 	MemSys     string
 	Metrics    bool
-	Logs       []statusLog // newest first
+	// Update: state of the release check, as display text (Err: raw message, shown escaped).
+	Update    string
+	LastCheck string
+	UpdateErr string
+	Logs      []statusLog // newest first
 }
 
 func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +57,9 @@ func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
 	if s.deps.Engine != nil {
 		v.Profile = s.deps.Engine.Snapshot().Config.Profile
 	}
+	if ub, ok := s.deps.Engine.(updateBackend); ok && s.deps.Engine != nil {
+		v.Update, v.LastCheck, v.UpdateErr = updateStatus(lang, ub.UpdateState())
+	}
 	if s.deps.Logs != nil {
 		es := s.deps.Logs.Entries()
 		for i := len(es) - 1; i >= 0; i-- {
@@ -64,6 +72,26 @@ func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
 	pd := s.newPageData(r, true)
 	pd.Data = v
 	s.render(w, http.StatusOK, "status", pd)
+}
+
+// updateStatus renders the release check for the status page.
+func updateStatus(lang i18n.Lang, st engine.UpdateState) (state, last, errMsg string) {
+	switch {
+	case !st.Enabled:
+		state = i18n.T(lang, "status.updateOff")
+	case !st.Supported:
+		state = i18n.T(lang, "status.updateDev")
+	case st.Available:
+		state = i18n.T(lang, "status.updateAvailable", st.Latest)
+	case st.Checked.IsZero():
+		state = i18n.T(lang, "status.updatePending")
+	default:
+		state = i18n.T(lang, "status.updateCurrent")
+	}
+	if !st.Checked.IsZero() {
+		last = st.Checked.Local().Format("2006-01-02 15:04:05")
+	}
+	return state, last, sanitizeError(st.Err)
 }
 
 // formatUptime renders a duration as "2 d 3 h 4 min" (seconds below a minute).

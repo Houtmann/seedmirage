@@ -152,6 +152,7 @@ type Engine struct {
 	load  func(string) (*emulation.Profile, error)
 	relMu sync.Mutex
 	rel   ReleaseChecker // nil : créé à la première vérification
+	upd   UpdateSource   // state of the release check (mu); nil: none
 
 	clientsDir string // dossier clients/ (liste des profils proposés par l'UI)
 

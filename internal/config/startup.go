@@ -18,6 +18,7 @@ const (
 	EnvLogFormat    = "SEEDMIRAGE_LOG_FORMAT"
 	EnvOpen         = "SEEDMIRAGE_OPEN"
 	EnvMetrics      = "SEEDMIRAGE_METRICS"
+	EnvNoUpdate     = "SEEDMIRAGE_NO_UPDATE_CHECK"
 	// EnvUIToken fixes the UI access token (takes precedence over <data>/ui-token,
 	// which is left untouched). Environment only: no flag, to keep it out of ps.
 	EnvUIToken = "SEEDMIRAGE_UI_TOKEN"
@@ -47,6 +48,8 @@ type Startup struct {
 	Open         bool
 	// Metrics enables GET /metrics (Prometheus text format; off by default).
 	Metrics bool
+	// NoUpdateCheck turns the release check off for this run, whatever config.json says.
+	NoUpdateCheck bool
 	// UIToken is the token fixed by EnvUIToken ("" = use <data>/ui-token).
 	UIToken string
 	// InContainer silences the non-loopback listen warning (the Host check stays on).
@@ -110,6 +113,7 @@ func RegisterStartupFlags(fs *flag.FlagSet, getenv func(string) string) *Startup
 	}
 	fs.BoolVar(&s.Open, "open", openDef, "open the UI in the browser (default: on, except in a container or without a display; env "+EnvOpen+")")
 	fs.BoolVar(&s.Metrics, "metrics", boolean(EnvMetrics), "expose GET /metrics, Prometheus text format, behind the UI access token (env "+EnvMetrics+")")
+	fs.BoolVar(&s.NoUpdateCheck, "no-update-check", boolean(EnvNoUpdate), "never look for a newer release (env "+EnvNoUpdate+")")
 	return s
 }
 

@@ -97,6 +97,7 @@ Useful flags (each one has an environment variable, see `seedmirage serve -h`):
 | `--allowed-host` | `SEEDMIRAGE_ALLOWED_HOSTS` | Extra `Host` header accepted, besides `localhost`, `127.0.0.1` and `::1` (protection against DNS rebinding). Repeatable or comma-separated. |
 | `--no-auth` | `SEEDMIRAGE_NO_AUTH` | Disable the access token. Only for a throwaway local test. |
 | `--metrics` | `SEEDMIRAGE_METRICS` | Expose `GET /metrics` (Prometheus text format, behind the access token). |
+| `--no-update-check` | `SEEDMIRAGE_NO_UPDATE_CHECK` | Never look for a newer release (see [Update notice](usage.md#update-notice)). |
 | `--log-level` | `SEEDMIRAGE_LOG_LEVEL` | `debug`, `info` (default), `warn`, `error`. |
 | `--log-format` | `SEEDMIRAGE_LOG_FORMAT` | `text` (default) or `json`. |
 

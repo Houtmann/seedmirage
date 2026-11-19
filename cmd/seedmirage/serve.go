@@ -18,6 +18,7 @@ import (
 	"seedmirage/internal/engine"
 	"seedmirage/internal/instance"
 	"seedmirage/internal/logring"
+	"seedmirage/internal/update"
 	"seedmirage/internal/web"
 )
 
@@ -122,7 +123,20 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 			}
 		}()
 	}
-	srv, err := web.New(st, web.Deps{Logger: logger, TokenPath: layout.UIToken, Version: version, Engine: eng, ConfigPath: layout.Config, OnReady: onReady, Logs: ring})
+	// Release check: off for this run with --no-update-check, otherwise governed
+	// by the updateCheck setting (applied at once). Stopped with the run context.
+	checkCtx, cancelCheck := context.WithCancel(ctx)
+	defer cancelCheck()
+	if !st.NoUpdateCheck {
+		chk := update.New(update.Config{
+			Version: version, Logger: logger, Enabled: eng.UpdateCheckEnabled,
+			OnAvailable: func(r update.Release) { eng.NotifyUpdate(r.Version) },
+		})
+		eng.SetUpdates(chk)
+		wg.Add(1)
+		go func() { defer wg.Done(); chk.Run(checkCtx) }()
+	}
+	srv, err := web.New(st, web.Deps{Logger: logger, TokenPath: layout.UIToken, Version: version, Docker: update.InDocker(), Engine: eng, ConfigPath: layout.Config, OnReady: onReady, Logs: ring})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "seedmirage serve: %v\n", err)
 		return exitUsage
@@ -154,6 +168,7 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 		code = 1
 	}
 	cancelRun()
+	cancelCheck()
 	wg.Wait()
 	return code
 }

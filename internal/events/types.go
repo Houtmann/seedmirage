@@ -21,6 +21,8 @@ const (
 	SpeedChanged   Type = "speed.changed"
 	ConfigChanged  Type = "config.changed"
 	ConfigInvalid  Type = "config.invalid"
+	// UpdateAvailable: a newer seedmirage release exists (Detail: its version).
+	UpdateAvailable Type = "update.available"
 )
 
 // Event est un événement du bus. Les champs inutilisés restent à leur valeur nulle.

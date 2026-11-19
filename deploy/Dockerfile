@@ -17,6 +17,7 @@ COPY --from=build --chown=65532:65532 /out/data /data
 # The container is isolated: real exposure depends on the published port (127.0.0.1 in compose.yaml).
 ENV SEEDMIRAGE_LISTEN=0.0.0.0:7070 \
     SEEDMIRAGE_IN_CONTAINER=1 \
+    SEEDMIRAGE_IN_DOCKER=1 \
     SEEDMIRAGE_LOG_FORMAT=json
 VOLUME /data
 EXPOSE 7070

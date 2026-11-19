@@ -56,6 +56,9 @@ type Config struct {
 	Schedule        Schedule `json:"schedule"`
 	AnnounceIP      string   `json:"announceIP"` // "" = not sent
 	AutoStart       bool     `json:"autoStart"`  // start seeding when `serve` starts
+	// UpdateCheck: once a day, ask GitHub whether a newer release exists (the
+	// only request that is not a tracker announce). Applied at once.
+	UpdateCheck bool `json:"updateCheck"`
 	// SimulateDownload: a torrent first seen while this is on starts as a
 	// download (left = size) before seeding. Rates in KiB/s.
 	SimulateDownload bool `json:"simulateDownload"`
@@ -87,6 +90,7 @@ func Defaults() Config {
 		Caps:               Caps{PerLeecherMax: 500, SwarmShare: 0.5},
 		Schedule:           Schedule{Hourly: DefaultHourly()},
 		AutoStart:          true,
+		UpdateCheck:        true,
 		MinDownloadRate:    100,
 		MaxDownloadRate:    2000,
 	}

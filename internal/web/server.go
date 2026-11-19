@@ -54,6 +54,9 @@ type Deps struct {
 	// OnReady, when set, is called once the listener is bound, with the actual
 	// address (host:port, unspecified host mapped to 127.0.0.1).
 	OnReady func(addr string)
+	// Docker: the process runs in a container (the update notice then shows the
+	// docker compose command instead of a link to the release).
+	Docker bool
 	// Logs feeds the /status page with the recent warn+ records (optional).
 	Logs LogSource
 }
@@ -192,6 +195,7 @@ func (s *Server) Handler() http.Handler {
 		}
 	}
 	s.registerStatus(mux)
+	s.registerUpdate(mux)
 	if s.deps.Routes != nil {
 		s.deps.Routes(mux, s.protect)
 	}
@@ -220,9 +224,10 @@ type pageData struct {
 	Nav       bool
 	HXHeaders string // JSON for hx-headers (CSRF token)
 	Data      any
-	Lang      string       // <html lang>
-	Langs     []langOption // language selector
-	Path      string       // current path and query: where POST /lang returns to
+	Lang      string        // <html lang>
+	Langs     []langOption  // language selector
+	Path      string        // current path and query: where POST /lang returns to
+	Update    *updateBanner // new-version notice (nil: none, or hidden for this version)
 }
 
 func (s *Server) newPageData(r *http.Request, nav bool) pageData {
@@ -231,6 +236,7 @@ func (s *Server) newPageData(r *http.Request, nav bool) pageData {
 	if nav {
 		session, _ := s.effectiveSession(r)
 		pd.Path = r.URL.RequestURI()
+		pd.Update = s.updateBannerFor(r)
 		b, _ := json.Marshal(map[string]string{CSRFHeader: s.auth.csrfToken(session)})
 		pd.HXHeaders = string(b)
 	}
