@@ -1,7 +1,9 @@
 # Documentation
 
-| Fichier | Contenu |
+| File | Content |
 |---|---|
-| [`profiles.md`](profiles.md) | Format des profils clients, profils embarqués, vérification et ajout d'une version |
-| [`capture.md`](capture.md) | Mode capture : fabriquer un profil à partir du vrai client (procédure, Docker, hôte) |
-| [`docker.md`](docker.md) | Docker local : image, compose, token, variables, healthcheck |
+| [`install.md`](install.md) | Installation: binary (macOS, Linux, Windows) and Docker, data location, upgrade, uninstall |
+| [`usage.md`](usage.md) | First launch, torrents, profiles, every setting, statistics, clean shutdown, tracker errors, FAQ |
+| [`docker.md`](docker.md) | Local Docker: image, compose, token, variables, healthcheck |
+| [`profiles.md`](profiles.md) | Client profile format, embedded profiles, verification, adding a version |
+| [`capture.md`](capture.md) | Capture mode: building a profile from the real client (procedure, Docker, host) |

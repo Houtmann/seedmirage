@@ -1,17 +1,17 @@
-# seedmirage en local : construit l'image depuis les sources, UI sur http://127.0.0.1:7070 uniquement.
+# seedmirage locally: builds the image from the sources, UI on http://127.0.0.1:7070 only.
 #
-#   mkdir -p data                      # créé par vous (sinon Docker le crée en root)
+#   mkdir -p data                      # create it yourself (otherwise Docker creates it as root)
 #   docker compose up -d --build
-#   docker compose logs seedmirage | grep token    # lien d'accès
-#   docker compose down                # envoie les `stopped` (délai max 15 s)
+#   docker compose logs seedmirage | grep token    # access link
+#   docker compose down                # sends the `stopped` announces (15 s at most)
 #
-# Variables (fichier .env à côté de ce compose, voir .env.example, ou environnement) :
-#   SEEDMIRAGE_IMAGE      nom de l'image construite (défaut seedmirage:local)
-#   SEEDMIRAGE_VERSION    version injectée dans le binaire (défaut dev)
-#   SEEDMIRAGE_UID/GID    UID/GID de l'hôte pour les fichiers de ./data (défaut 1000:1000 ; `id -u`, `id -g`)
-#   SEEDMIRAGE_UI_TOKEN   fixe le token d'accès (>= 32 caractères : openssl rand -hex 32) ; sinon data/ui-token
-#   TZ                    fuseau horaire (défaut Etc/UTC)
-#   SEEDMIRAGE_LOG_FORMAT json (défaut dans le conteneur) ou text
+# Variables (a .env file next to this compose file, see .env.example, or the environment):
+#   SEEDMIRAGE_IMAGE      name of the built image (default seedmirage:local)
+#   SEEDMIRAGE_VERSION    version injected in the binary (default dev)
+#   SEEDMIRAGE_UID/GID    host UID/GID for the files in ./data (default 1000:1000; `id -u`, `id -g`)
+#   SEEDMIRAGE_UI_TOKEN   fixes the access token (>= 32 characters: openssl rand -hex 32); otherwise data/ui-token
+#   TZ                    time zone (default Etc/UTC)
+#   SEEDMIRAGE_LOG_FORMAT json (default in the container) or text
 name: seedmirage
 services:
   seedmirage:
@@ -21,7 +21,7 @@ services:
       args:
         VERSION: ${SEEDMIRAGE_VERSION:-dev}
     image: ${SEEDMIRAGE_IMAGE:-seedmirage:local}
-    # Créer ./data avec ce même UID/GID avant le premier lancement (sinon Docker le crée en root).
+    # Create ./data with this same UID/GID before the first start (otherwise Docker creates it as root).
     user: "${SEEDMIRAGE_UID:-1000}:${SEEDMIRAGE_GID:-1000}"
     restart: unless-stopped
     stop_grace_period: 15s

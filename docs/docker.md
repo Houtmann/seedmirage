@@ -1,44 +1,44 @@
 # Docker (local)
 
-seedmirage tourne en conteneur **sur votre machine** ; l'UI n'est joignable que depuis celle-ci
-(`127.0.0.1:7070`). Pas de VPS, pas de TLS.
+seedmirage runs in a container **on your machine**; the interface is reachable only from that machine
+(`127.0.0.1:7070`). No VPS, no TLS.
 
 ```bash
-mkdir -p data                                 # propriétaire = votre utilisateur (voir UID/GID)
-docker compose up -d --build                  # construit seedmirage:local depuis les sources et le lance
-docker compose logs seedmirage | grep token   # lien d'accès avec le token
-docker compose down                           # envoie les `stopped` (délai max 15 s)
+mkdir -p data                                 # owned by your user (see UID/GID)
+docker compose up -d --build                  # builds seedmirage:local from the sources and starts it
+docker compose logs seedmirage | grep token   # access link with the token
+docker compose down                           # sends the `stopped` announces (15 s at most)
 ```
 
-`compose.yaml` est à la racine du dépôt (image distroless). Sans `mkdir -p data` préalable, Docker crée
-`data/` en root et le conteneur (UID/GID `1000:1000` par défaut) ne peut pas y écrire. Pour changer un
-réglage, copier `.env.example` en `.env`. `make up` / `make down` sont des raccourcis ; `make docker`
-construit seulement l'image (`seedmirage:dev`).
+`compose.yaml` is at the root of the repository (distroless image). Without a prior `mkdir -p data`, Docker creates
+`data/` as root and the container (UID/GID `1000:1000` by default) cannot write to it. To change a setting, copy
+`.env.example` to `.env`. `make up` / `make down` are shortcuts; `make docker` only builds the image (`seedmirage:dev`).
 
-Ouvrir le lien `http://127.0.0.1:7070/?token=…` affiché dans les logs. Les `.torrent` se déposent dans
-`./data/torrents/`.
+Open the `http://127.0.0.1:7070/?token=...` link printed in the logs. Drop your `.torrent` files in
+`./data/torrents/`, or add them from the interface.
 
 ## Variables
 
-| Variable | Rôle |
+| Variable | Purpose |
 |---|---|
-| `SEEDMIRAGE_IMAGE` | Nom de l'image construite (défaut `seedmirage:local`). |
-| `SEEDMIRAGE_VERSION` | Version injectée dans le binaire (défaut `dev`). |
-| `SEEDMIRAGE_UID` / `SEEDMIRAGE_GID` | UID/GID de l'hôte pour les fichiers de `data/` (défaut `1000:1000` ; `id -u`, `id -g`). |
-| `SEEDMIRAGE_UI_TOKEN` | Fixe le token d'accès : au moins 32 caractères parmi lettres, chiffres, `-_.~` (`openssl rand -hex 32`). Prime sur `data/ui-token` sans l'écraser. Un token invalide arrête le démarrage avec un message clair (et `restart: unless-stopped` relance en boucle : corriger la valeur). |
-| `SEEDMIRAGE_LOG_FORMAT` | `json` (défaut dans l'image) ou `text`. Équivalent de `--log-format`. |
-| `TZ` | Fuseau horaire (défaut `Etc/UTC`). |
+| `SEEDMIRAGE_IMAGE` | Name of the built image (default `seedmirage:local`). |
+| `SEEDMIRAGE_VERSION` | Version injected in the binary (default `dev`). |
+| `SEEDMIRAGE_UID` / `SEEDMIRAGE_GID` | Host UID/GID for the files in `data/` (default `1000:1000`; `id -u`, `id -g`). |
+| `SEEDMIRAGE_UI_TOKEN` | Fixes the access token: at least 32 characters among letters, digits and `-_.~` (`openssl rand -hex 32`). It takes precedence over `data/ui-token` without overwriting it. An invalid token stops the startup with a clear message (and `restart: unless-stopped` restarts it in a loop: fix the value). |
+| `SEEDMIRAGE_LOG_FORMAT` | `json` (default in the image) or `text`. Same as `--log-format`. |
+| `TZ` | Time zone (default `Etc/UTC`); it is the zone of the hourly schedule when none is set in the settings. |
 
-Dans l'image : `SEEDMIRAGE_LISTEN=0.0.0.0:7070` et `SEEDMIRAGE_IN_CONTAINER=1` (pas d'avertissement « adresse non
-loopback » : c'est le port publié, `127.0.0.1:7070:7070`, qui limite l'exposition). Le contrôle de `Host`
-(localhost, 127.0.0.1, ::1, `SEEDMIRAGE_ALLOWED_HOSTS`) reste actif.
+In the image: `SEEDMIRAGE_LISTEN=0.0.0.0:7070` and `SEEDMIRAGE_IN_CONTAINER=1` (no "non-loopback address" warning: it is the
+published port, `127.0.0.1:7070:7070`, that limits the exposure). The `Host` check (localhost, 127.0.0.1, ::1,
+`SEEDMIRAGE_ALLOWED_HOSTS`) stays active.
 
 ## Healthcheck
 
-`seedmirage healthcheck` fait un `GET /healthz` sur l'adresse d'écoute locale (`--listen`, sinon
-`SEEDMIRAGE_LISTEN`), code de sortie 0/1, sans token. Il sert au `HEALTHCHECK` de l'image (pas de curl dans distroless).
+`seedmirage healthcheck` sends a `GET /healthz` to the local listen address (`--listen`, otherwise
+`SEEDMIRAGE_LISTEN`) and exits with code 0 or 1, without a token. The image uses it as its `HEALTHCHECK` (there is no curl
+in distroless).
 
-## Joindre un tracker de l'hôte
+## Reaching a tracker on the host
 
-Le compose ajoute `host.docker.internal` (`host-gateway`) : un tracker qui tourne sur la machine
-(ex. `go run ./scripts/demo-tracker --listen 0.0.0.0:6969`) est joignable à `http://host.docker.internal:6969/announce`.
+The compose file adds `host.docker.internal` (`host-gateway`): a tracker running on the machine
+(for instance `go run ./scripts/demo-tracker --listen 0.0.0.0:6969`) is reachable at `http://host.docker.internal:6969/announce`.

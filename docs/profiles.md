@@ -1,178 +1,184 @@
-# Profils de clients (format `schema` 1)
+# Client profiles (`schema` 1 format)
 
-Un profil décrit comment un client BitTorrent annonce : peer_id, key, encodage, paramètres de query (ordre compris),
-en-têtes et `numwant`. Le format est propre à seedmirage ; il est conçu pour reproduire **octet pour octet** la
-requête du vrai client (invariant : requête identique, octet pour octet). Code : `internal/emulation`. Profils embarqués :
-`internal/emulation/profiles/*.json`, copiés dans `clients/` au démarrage (voir « Profils embarqués »). Référence complète du format.
+A profile describes how a BitTorrent client announces: peer_id, key, encoding, query parameters (in order), headers and
+`numwant`. The format is specific to seedmirage; it is designed to reproduce the real client's request **byte for byte**.
+Code: `internal/emulation`. Embedded profiles: `internal/emulation/profiles/*.json`, copied to `clients/` at startup (see
+[Installation in `clients/`](#installation-in-clients)). This page is the complete reference of the format.
 
-La vérité sur un client vient de son **code source** : chaque profil cite dans `references` les fichiers, tags et lignes
-consultés, et dit dans `notes` ce qui reste incertain ou non reproduit.
+The truth about a client comes from its **source code**: each profile cites in `references` the files, tags and lines that were
+read, and says in `notes` what remains uncertain or is not reproduced.
 
-## Clés
+## Keys
 
-| Clé | Type | Rôle |
+| Key | Type | Purpose |
 |---|---|---|
-| `schema` | entier | Toujours `1`. |
-| `name` | texte | `<family>-<version>`, doit correspondre au nom du fichier. |
-| `family`, `version` | texte | Ex. `qbittorrent`, `5.3.0`. |
-| `released` | `AAAA-MM-JJ` | Date de la version (au besoin celle du commit tagué, dit dans `notes`). |
-| `source` | `manual` \| `capture` | Origine du profil. |
-| `notes` | texte | Écarts, approximations, incertitudes. |
-| `references` | liste `{url, note}` | Fichiers source consultés : lien permanent (tag ou commit, plage `#Lx-Ly`) et ce qu'il justifie. Obligatoire, `https://`. |
-| `peerId` | objet | Voir ci-dessous. |
-| `key` | objet, optionnel | Voir ci-dessous. Absent : le client n'envoie pas de key. |
-| `encoding` | objet | `keep` : octets non encodés en plus de `[0-9A-Za-z]` (ASCII imprimable, sans `%`) ; `hex` : `upper` ou `lower`. Un paramètre de `query` peut porter son propre `encoding` (voir « query »). |
-| `query` | liste ordonnée | Paramètres `{name, value, omit?}`. |
-| `headers` | liste ordonnée | En-têtes `{name, value}` à valeur fixe, dans l'ordre d'émission. `Host` est ajouté par le client HTTP, en premier ; pour le placer ailleurs (BiglyBT/JDK), l'entrée `{"name": "Host", "value": "{host}"}` fixe sa position (seule valeur permise). |
-| `udp` | objet, optionnel | `urlData` (booléen, vrai par défaut) : le client joint l'option BEP 41 « URLData » (chemin et query de l'URL du tracker) à ses annonces UDP. libtorrent (qBittorrent, Deluge) l'envoie, Transmission non : confirmé par capture. |
-| `numwant` | objet | `none`, `started`, `completed`, `stopped` : les quatre clés sont obligatoires (entiers >= -1 ; -1 = défaut du tracker : le client n'envoie pas `numwant` en HTTP et envoie -1 en UDP, comme rTorrent). |
+| `schema` | integer | Always `1`. |
+| `name` | text | `<family>-<version>`, must match the file name. |
+| `family`, `version` | text | For example `qbittorrent`, `5.3.0`. |
+| `released` | `YYYY-MM-DD` | Release date of the version (if needed that of the tagged commit, stated in `notes`). |
+| `source` | `manual` \| `capture` | Origin of the profile. |
+| `notes` | text | Differences, approximations, uncertainties. |
+| `references` | list of `{url, note}` | Source files that were read: permanent link (tag or commit, `#Lx-Ly` range) and what it justifies. Mandatory, `https://`. |
+| `peerId` | object | See below. |
+| `key` | object, optional | See below. Absent: the client does not send a key. |
+| `encoding` | object | `keep`: bytes left unencoded besides `[0-9A-Za-z]` (printable ASCII, without `%`); `hex`: `upper` or `lower`. A `query` parameter can carry its own `encoding` (see "query"). |
+| `query` | ordered list | Parameters `{name, value, omit?}`. |
+| `headers` | ordered list | Headers `{name, value}` with a fixed value, in sending order. `Host` is added by the HTTP client, first; to place it elsewhere (BiglyBT/JDK), the entry `{"name": "Host", "value": "{host}"}` sets its position (the only value allowed). |
+| `udp` | object, optional | `urlData` (boolean, true by default): the client attaches the BEP 41 "URLData" option (path and query of the tracker URL) to its UDP announces. libtorrent (qBittorrent, Deluge) sends it, Transmission does not: confirmed by capture. |
+| `numwant` | object | `none`, `started`, `completed`, `stopped`: the four keys are mandatory (integers >= -1; -1 = tracker default: the client does not send `numwant` over HTTP and sends -1 over UDP, like rTorrent). |
 
-Les champs inconnus sont refusés (`Parse`) : un profil est un contrat.
+Unknown fields are rejected (`Parse`): a profile is a contract.
 
 ### `peerId`
 
-`prefix` (texte) ou `prefixHex` (hexadécimal, pour des octets non imprimables) + `suffix` + éventuel octet de somme.
-`suffix` est un motif `regexgen` (sous-ensemble de la syntaxe `regexp/syntax`, octets 0x00-0xFF), de longueur **fixe**.
-Le total fait exactement **20 octets** : `Validate` le vérifie sur 64 tirages, et chaque génération le revérifie.
+`prefix` (text) or `prefixHex` (hexadecimal, for non-printable bytes) + `suffix` + optional checksum byte.
+`suffix` is a `regexgen` pattern (a subset of the `regexp/syntax` syntax, bytes 0x00-0xFF) of **fixed** length.
+The total is exactly **20 bytes**: `Validate` checks it over 64 draws, and every generation checks it again.
 
-`checksum` (optionnel) nomme une transformation appliquée au suffixe :
+`checksum` (optional) names a transformation applied to the suffix:
 
-| Nom | Effet | Client |
+| Name | Effect | Client |
 |---|---|---|
-| `mod36` | Ajoute un octet final tiré de `0-9a-z` tel que la somme des indices (dans `0-9a-z`) du suffixe et de cet octet soit nulle modulo 36 ; le suffixe doit être dans `0-9a-z`. | Transmission 4.1.4 (`tr_peerIdInit`, `session.cc`) |
+| `mod36` | Appends a final byte drawn from `0-9a-z` such that the sum of the indices (in `0-9a-z`) of the suffix and of that byte is zero modulo 36; the suffix must be within `0-9a-z`. | Transmission 4.1.4 (`tr_peerIdInit`, `session.cc`) |
 
 ### `key`
 
-`pattern` : motif `regexgen` (ex. `[0-9A-F]{8}` = 32 bits en hexadécimal majuscule). Le client UDP (BEP 15) peut réutiliser `Announce.Key`.
+`pattern`: a `regexgen` pattern (for example `[0-9A-F]{8}` = 32 bits in uppercase hexadecimal). The UDP client (BEP 15) can reuse `Announce.Key`.
 
-### Portées de renouvellement (`renewal.scope`)
+### Renewal scopes (`renewal.scope`)
 
-`renewal` accepte en plus, pour le **peer_id** seulement et la portée `torrent`, `ttlHours` (le peer_id est renouvelé à la première annonce qui suit son âge de `ttlHours` heures) et `ttlPublicOnly` (les torrents privés ne sont jamais renouvelés par l'âge). Transmission 3.00 : `{"scope": "torrent", "ttlHours": 6, "ttlPublicOnly": true}`.
+For the **peer_id** only and the `torrent` scope, `renewal` additionally accepts `ttlHours` (the peer_id is renewed at the first
+announce after it is `ttlHours` hours old) and `ttlPublicOnly` (private torrents are never renewed by age). Transmission 3.00:
+`{"scope": "torrent", "ttlHours": 6, "ttlPublicOnly": true}`.
 
-| Portée | Comportement | Clients qui l'utilisent |
+| Scope | Behavior | Clients that use it |
 |---|---|---|
-| `torrent` | Une valeur par torrent, stable tant que l'état du torrent est conservé : la vie du processus, ou jusqu'à éviction après `IdleTTL` (24 h par défaut) sans annonce. Un `started` répété ne la renouvelle pas (un client réel garde l'objet torrent en pause/reprise). | qBittorrent 4.6.7 et 5.3.0 (peer_id : `torrent.cpp` ; key : `tracker_key()`), Deluge 2.2.0, Transmission 4.1.4 et 3.00 (peer_id), rTorrent 0.16.28 (peer_id et key) |
-| `process` | Une valeur pour tout le processus, partagée par les torrents. | Transmission 3.00 (key : `tr_announcer`) ; disponible pour les captures. |
-| `session` | Une valeur par torrent, renouvelée à chaque annonce `started`. | Aucun client étudié à ce jour ; disponible pour les captures. |
+| `torrent` | One value per torrent, stable as long as the torrent state is kept: the life of the process, or until eviction after `IdleTTL` (24 h by default) without an announce. A repeated `started` does not renew it (a real client keeps the torrent object across pause and resume). | qBittorrent 4.6.7 and 5.3.0 (peer_id: `torrent.cpp`; key: `tracker_key()`), Deluge 2.2.0, Transmission 4.1.4 and 3.00 (peer_id), rTorrent 0.16.28 (peer_id and key) |
+| `process` | One value for the whole process, shared by all torrents. | Transmission 3.00 (key: `tr_announcer`); available for captures. |
+| `session` | One value per torrent, renewed at every `started` announce. | No client studied so far; available for captures. |
 
-Chaque valeur est tirée avec la source `*rand.Rand` injectée ; l'état est évincé via l'horloge `clock.Clock` injectée.
+Every value is drawn with the injected `*rand.Rand` source; state is evicted through the injected `clock.Clock`.
 
 ### `query`
 
-Chaque paramètre est émis dans l'ordre de la liste, sous la forme `name=value`, séparés par `&`. Un paramètre peut avoir son propre `encoding` (même forme que celui du profil) qui remplace celui du profil pour ses variables : Transmission 3.00 encode l'info_hash en hexadécimal minuscule et `ipv6` en majuscule. Le résultat
-(`Announce.RawQuery`, sans `?`) n'est jamais « nettoyé » : un paramètre soit est émis, soit est omis selon des règles explicites.
+Each parameter is emitted in list order, as `name=value`, separated by `&`. A parameter can have its own `encoding` (same shape as
+the profile's) which replaces the profile's for its variables: Transmission 3.00 encodes the info_hash in lowercase hexadecimal
+and `ipv6` in uppercase. The result (`Announce.RawQuery`, without `?`) is never "cleaned up": a parameter is either emitted or
+omitted according to explicit rules.
 
-`value` est un gabarit : texte littéral (sans accolades) et variables `{nom}`, encodées selon `encoding`. `{nom:raw}` insère
-la valeur telle quelle (le client réel ne l'encode pas ; seul usage actuel : `trackerid` et `ip` de Transmission).
-`{info_hash:raw}` est interdit.
+`value` is a template: literal text (no braces) and `{name}` variables, encoded according to `encoding`. `{name:raw}` inserts the
+value as is (the real client does not encode it; only current use: Transmission's `trackerid` and `ip`).
+`{info_hash:raw}` is forbidden.
 
-| Variable | Valeur | Omission exigée |
+| Variable | Value | Required omission |
 |---|---|---|
-| `{info_hash}` | 20 octets, encodés octet par octet | |
-| `{peer_id}` | 20 octets du peer_id | |
-| `{port}`, `{uploaded}`, `{downloaded}`, `{left}`, `{numwant}` | décimal | |
-| `{event}` | `started`, `stopped` ou `completed` | `no-event` |
-| `{key}` | key du torrent | `no-key` si le profil n'a pas de section `key` |
+| `{info_hash}` | 20 bytes, encoded byte by byte | |
+| `{peer_id}` | the 20 bytes of the peer_id | |
+| `{port}`, `{uploaded}`, `{downloaded}`, `{left}`, `{numwant}` | decimal | |
+| `{event}` | `started`, `stopped` or `completed` | `no-event` |
+| `{key}` | the torrent's key | `no-key` if the profile has no `key` section |
 | `{ip}` | `PublicIP` | `no-ip` |
-| `{ipv4}` / `{ipv6}` | `PublicIP` si IPv4 / IPv6 (jamais IPv4 mappée en IPv6) | `no-ipv4` / `no-ipv6` |
-| `{tracker_id}` | `trackerid` reçu du tracker | `no-tracker-id` |
+| `{ipv4}` / `{ipv6}` | `PublicIP` if IPv4 / IPv6 (never an IPv4-mapped IPv6) | `no-ipv4` / `no-ipv6` |
+| `{tracker_id}` | `trackerid` received from the tracker | `no-tracker-id` |
 
-`Validate` refuse un paramètre qui utilise une variable sans l'omission correspondante.
+`Validate` rejects a parameter that uses a variable without the matching omission.
 
-Règles `omit` (le paramètre est supprimé si **l'une** des conditions est vraie) :
+`omit` rules (the parameter is removed if **any** condition is true):
 
-| Règle | Vraie quand |
+| Rule | True when |
 |---|---|
-| `no-event` | annonce régulière (aucun événement) |
-| `no-ip` | `PublicIP` inconnue |
-| `no-ipv4` / `no-ipv6` | `PublicIP` absente ou d'une autre famille |
-| `no-key` | le profil n'a pas de `key` |
-| `no-tracker-id` | aucun trackerid connu |
-| `public-torrent` | le torrent n'a pas le drapeau `private` |
+| `no-event` | regular announce (no event) |
+| `no-ip` | `PublicIP` unknown |
+| `no-ipv4` / `no-ipv6` | `PublicIP` missing or of another family |
+| `no-key` | the profile has no `key` |
+| `no-tracker-id` | no trackerid known |
+| `public-torrent` | the torrent does not have the `private` flag |
 
 ### `headers`
 
-Valeurs fixes, ordre du profil. Le client HTTP écrit la requête à la main et place `Host` en premier, sauf entrée `Host` `{host}` dans `headers` : il l'écrit alors à cette position, avec l'hôte de l'URL d'annonce. Il doit décoder
-les codages annoncés dans `Accept-Encoding` (profil Transmission : `deflate, gzip`).
+Fixed values, in the profile's order. The HTTP client writes the request by hand and puts `Host` first, unless `headers` has a
+`Host` entry `{host}`: it then writes it at that position, with the host of the announce URL. It must decode the codings advertised
+in `Accept-Encoding` (Transmission profile: `deflate, gzip`).
 
-Écart connu (v1) : Transmission envoie une annonce IPv4 puis une IPv6 quand l'hôte a les deux ; seedmirage n'envoie
-**qu'une annonce par tracker**, sur l'adresse que résout le système. Le tracker ne voit donc pas la seconde annonce.
-Le client HTTP (`internal/tracker`) n'ajoute aucun en-tête (ni `Accept-Encoding` ni `User-Agent` Go), joint la query
-à celle de l'URL d'annonce par `&` (sinon `?`) et omet le port de `Host` s'il est celui du schéma.
+Known difference (v1): Transmission sends an IPv4 announce then an IPv6 one when the host has both; seedmirage sends
+**one announce per tracker**, on the address the system resolves. The tracker therefore does not see the second announce.
+The HTTP client (`internal/tracker`) adds no header (neither `Accept-Encoding` nor Go's `User-Agent`), joins the query to the one
+of the announce URL with `&` (otherwise `?`) and omits the port from `Host` when it is the scheme's default.
 
-## Profils embarqués
+## Embedded profiles
 
-Triés par famille puis par version sémantique (`CompareVersions` : `4.10.0` après `4.9.0`, `3.00` = `3.0`). `emulation.LatestEmbedded("qbittorrent")` donne le profil par défaut de la config (`config.Defaults`).
-Chaque profil cite le code source du client (tag, fichier, lignes) dans `references` ; ce qui n'a pas pu être établi est dit dans `notes`.
+Sorted by family then by semantic version (`CompareVersions`: `4.10.0` after `4.9.0`, `3.00` = `3.0`).
+`emulation.LatestEmbedded("qbittorrent")` gives the default profile of the configuration (`config.Defaults`).
+Each profile cites the client's source code (tag, file, lines) in `references`; what could not be established is stated in `notes`.
 
-| Famille | Version | Date de sortie | Code source cité |
+| Family | Version | Release date | Source code cited |
 |---|---|---|---|
 | qbittorrent | 5.3.0 | 2026-10-19 | qBittorrent `release-5.3.0` + libtorrent `v2.0.15` |
-| qbittorrent | 4.6.7 | 2024-09-16 | qBittorrent `release-4.6.7` + libtorrent `v1.2.20` (annonce identique à 2.0.15) |
+| qbittorrent | 4.6.7 | 2024-09-16 | qBittorrent `release-4.6.7` + libtorrent `v1.2.20` (announce identical to 2.0.15) |
 | transmission | 4.1.4 | 2026-10-22 | Transmission `4.1.4` |
 | transmission | 3.00 | 2020-05-22 | Transmission `3.00` |
-| deluge | 2.2.0 | 2025-04-28 | Deluge `deluge-2.2.0` + libtorrent `v2.0.15` (User-Agent : `lt.__version__` = 2.0.15.0 supposé) |
+| deluge | 2.2.0 | 2025-04-28 | Deluge `deluge-2.2.0` + libtorrent `v2.0.15` (User-Agent: `lt.__version__` = 2.0.15.0 assumed) |
 | rtorrent | 0.16.28 | 2026-11-11 | libtorrent (rakshasa) `v0.16.28` + rTorrent `v0.16.28` |
 
-### Vérification par capture
+### Verification by capture
 
-Les 6 profils ont été comparés, le 2026-11-19, à des **vrais clients** lancés dans Docker (`deploy/capture/docker-compose.yml`,
-pilotés par `scripts/capture/<client>.sh`, procédure de [`capture.md`](capture.md) : `started`, annonce régulière, pause/reprise
-d'un torrent, redémarrage du client, `stopped`, sur 4 torrents HTTP dont un privé et 1 torrent UDP). Les captures réduites aux
-annonces et anonymisées (IP publique remplacée par `192.0.2.10`) sont dans `internal/emulation/testdata/captures/<profil>/` ;
-`TestCapturedFixtures` (`internal/capture/fixtures_test.go`) les rejoue sans réseau contre le profil embarqué avec `capture.Diff`
-(HTTP) et `capture.DiffUDP` (UDP BEP 15). `known-diffs.txt` liste, par capture, les seuls écarts tolérés et leur raison.
+The 6 profiles were compared, on 2026-11-19, with **real clients** running in Docker (`deploy/capture/docker-compose.yml`,
+driven by `scripts/capture/<client>.sh`, procedure in [`capture.md`](capture.md): `started`, regular announce, pause and resume of
+one torrent, client restart, `stopped`, over 4 HTTP torrents including a private one and 1 UDP torrent). The captures, reduced to
+the announces and anonymized (public IP replaced by `192.0.2.10`), are in `internal/emulation/testdata/captures/<profile>/`;
+`TestCapturedFixtures` (`internal/capture/fixtures_test.go`) replays them offline against the embedded profile with `capture.Diff`
+(HTTP) and `capture.DiffUDP` (UDP BEP 15). `known-diffs.txt` lists, per capture, the only tolerated differences and their reason.
 
-| Profil | Client capturé (image Docker) | Résultat |
+| Profile | Captured client (Docker image) | Result |
 |---|---|---|
-| qbittorrent-5.3.0 | qBittorrent 5.3.0, libtorrent 2.1.2 (`lscr.io/linuxserver/qbittorrent:5.3.0`) | identique, HTTP et UDP |
-| qbittorrent-4.6.7 | qBittorrent 4.6.7, libtorrent 1.2.19 (`lscr.io/linuxserver/qbittorrent:4.6.7-libtorrentv1`) | identique, HTTP et UDP |
-| transmission-4.1.4 | Transmission 4.1.4 (`lscr.io/linuxserver/transmission:4.1.4`) | **corrigé** : `ip` retiré (seulement `ipv4`/`ipv6`), UDP sans option BEP 41, `num_want` UDP 0 pour `stopped` ; seul écart : `Accept-Encoding` |
-| transmission-3.00 | Transmission 3.00 (`lscr.io/linuxserver/transmission:version-3.00-r8`) | identique (UDP sans option BEP 41) ; seul écart : `Accept-Encoding` |
-| deluge-2.2.0 | Deluge 2.2.0 (`lscr.io/linuxserver/deluge:2.2.0`) | identique ; seul écart : version de libtorrent dans le `User-Agent` (2.0.13.0 dans l'image) |
-| rtorrent-0.16.28 | rTorrent **0.16.25** (`crazymax/rtorrent-rutorrent:5.3.18-0.16.25`, pas d'image 0.16.28) | identique aux versions près (`User-Agent`, préfixe de peer_id `-lt1019-`, justifiés par le code source) ; UDP sans option BEP 41 |
+| qbittorrent-5.3.0 | qBittorrent 5.3.0, libtorrent 2.1.2 (`lscr.io/linuxserver/qbittorrent:5.3.0`) | identical, HTTP and UDP |
+| qbittorrent-4.6.7 | qBittorrent 4.6.7, libtorrent 1.2.19 (`lscr.io/linuxserver/qbittorrent:4.6.7-libtorrentv1`) | identical, HTTP and UDP |
+| transmission-4.1.4 | Transmission 4.1.4 (`lscr.io/linuxserver/transmission:4.1.4`) | **fixed**: `ip` removed (only `ipv4`/`ipv6`), UDP without the BEP 41 option, UDP `num_want` 0 for `stopped`; only remaining difference: `Accept-Encoding` |
+| transmission-3.00 | Transmission 3.00 (`lscr.io/linuxserver/transmission:version-3.00-r8`) | identical (UDP without the BEP 41 option); only difference: `Accept-Encoding` |
+| deluge-2.2.0 | Deluge 2.2.0 (`lscr.io/linuxserver/deluge:2.2.0`) | identical; only difference: libtorrent version in the `User-Agent` (2.0.13.0 in the image) |
+| rtorrent-0.16.28 | rTorrent **0.16.25** (`crazymax/rtorrent-rutorrent:5.3.18-0.16.25`, no 0.16.28 image) | identical apart from versions (`User-Agent`, peer_id prefix `-lt1019-`, justified by the source code); UDP without the BEP 41 option |
 
-Écart commun à Transmission et rTorrent : la valeur de `Accept-Encoding` vient de la libcurl compilée dans le client
-(`deflate, gzip, br, zstd` avec celle des images Alpine). Les profils gardent `deflate, gzip` parce que le client HTTP de
-seedmirage ne décode ni `br` ni `zstd` ; un client réel sur une autre plate-forme (binaires officiels macOS/Windows) peut
-annoncer autre chose, ce que seule une capture de ce client permettrait de trancher.
+Difference shared by Transmission and rTorrent: the `Accept-Encoding` value comes from the libcurl compiled into the client
+(`deflate, gzip, br, zstd` with the Alpine images'). The profiles keep `deflate, gzip` because seedmirage's HTTP client does not
+decode `br` or `zstd`; a real client on another platform (official macOS/Windows binaries) may advertise something else, which
+only a capture of that client could settle.
 
-`udp.urlData` (nouveau, voir « Clés ») : libtorrent (qBittorrent, Deluge) envoie l'option BEP 41 `URLData` dans ses annonces UDP,
-Transmission et rTorrent non.
+`udp.urlData` (see "Keys"): libtorrent (qBittorrent, Deluge) sends the BEP 41 `URLData` option in its UDP announces;
+Transmission and rTorrent do not.
 
-**Scrape** (observé, aucune modification du moteur ici) : les clients capturés scrapent en HTTP en encodant
-l'`info_hash` **comme leur annonce** (qBittorrent et Deluge en hexadécimal minuscule, Transmission 4.1.4 et rTorrent en majuscule,
-Transmission 3.00 en minuscule) ; Transmission 4.1.4 envoie plusieurs paramètres `info_hash` dans une seule requête `/scrape`.
+**Scrape** (observed): the captured clients scrape over HTTP encoding the `info_hash` **like their announce** (qBittorrent and Deluge
+in lowercase hexadecimal, Transmission 4.1.4 and rTorrent in uppercase, Transmission 3.00 in lowercase); Transmission 4.1.4 sends
+several `info_hash` parameters in a single `/scrape` request.
 
-### Familles sans profil
+### Families without a profile
 
-- **µTorrent / BitTorrent** : clients Windows (et macOS) fermés, sans image Linux ; aucun code source à lire. Un profil exige
-  une **capture humaine** avec `seedmirage capture --listen <adresse LAN>` (voir « Client sur l'hôte » dans
-  [`capture.md`](capture.md)). Non fourni.
-- **BiglyBT** : non fourni, faute de pouvoir le rendre fidèle à l'octet près. Le format sait désormais placer `Host` (entrée
-  `Host` `{host}` de `headers`, respectée par `internal/tracker` et `capture`), mais la requête réelle dépend (a) du JDK embarqué
-  par l'installeur (`HttpURLConnection` : ordre `User-Agent`, `Connection`, `Accept-Encoding`, `Host`, `Accept`, valeur par
-  défaut d'`Accept` variable selon la version), (b) d'un filtre HTTP local de BiglyBT (`ClientIDManagerImpl`, v4.2.0.0) qui, quand
-  il est actif, réécrit `Host` en `hôte:port` explicite même pour le port 80, et (c) du suffixe optionnel du `User-Agent`
-  (`;système;Java x`). Aucune image Docker fiable (les images communautaires embarquent un VNC ou un VPN) et pas de capture :
-  un profil `manual` aurait une confiance trop faible pour l'invariant 5. À faire : capture d'un BiglyBT 4.2.0.0 réel, puis profil
-  avec `Host` placé d'après la capture. La dernière version publiée est BiglyBT 4.2.0.0 (2026-11-19).
+- **µTorrent / BitTorrent**: closed-source Windows (and macOS) clients, with no Linux image and no source code to read. A profile
+  requires a **human capture** with `seedmirage capture --listen <LAN address>` (see "Client on the host" in
+  [`capture.md`](capture.md)). Not provided.
+- **BiglyBT**: not provided, for lack of a way to make it faithful byte for byte. The format can place `Host` (the `Host`
+  entry `{host}` of `headers`, honored by `internal/tracker` and `capture`), but the real request depends on (a) the JDK bundled by
+  the installer (`HttpURLConnection`: order of `User-Agent`, `Connection`, `Accept-Encoding`, `Host`, `Accept`, and a default
+  `Accept` value that varies with the version), (b) a local BiglyBT HTTP filter (`ClientIDManagerImpl`, v4.2.0.0) which, when
+  active, rewrites `Host` as an explicit `host:port` even for port 80, and (c) the optional `User-Agent` suffix
+  (`;system;Java x`). There is no reliable Docker image (community images bundle a VNC or a VPN) and no capture: a `manual`
+  profile would have too low a confidence for the byte-for-byte guarantee. To do: capture a real BiglyBT 4.2.0.0, then write the
+  profile with `Host` placed according to the capture. The latest published version is BiglyBT 4.2.0.0 (2026-11-19).
 
-### Installation dans `clients/`
+### Installation in `clients/`
 
-Au démarrage (`datadir.Ensure`), chaque profil embarqué est copié dans `clients/<nom>.json` :
+At startup, each embedded profile is copied to `clients/<name>.json`:
 
-- absent : copié ;
-- présent et identique à l'embarqué : rien à faire ;
-- présent, identique à ce qui y avait été installé (hash SHA-256 dans `clients/.embedded.json`) mais différent de l'embarqué actuel : mis à jour avec le binaire ;
-- présent et modifié par l'utilisateur (ou fichier qu'on n'a pas installé) : **jamais écrasé**.
+- absent: copied;
+- present and identical to the embedded one: nothing to do;
+- present, identical to what had been installed (SHA-256 hash in `clients/.embedded.json`) but different from the current embedded one: updated with the binary;
+- present and modified by the user (or a file that was not installed by seedmirage): **never overwritten**.
 
-Les écritures sont atomiques (fichier temporaire puis rename). Un profil retiré des embarqués quitte le manifeste mais son fichier reste.
+Writes are atomic (temporary file then rename). A profile removed from the embedded ones leaves the manifest but its file stays.
 
-## API Go
+## Go API
 
 ```go
-p, _ := emulation.LoadEmbedded("qbittorrent-5.3.0") // ou emulation.Parse(data)
+p, _ := emulation.LoadEmbedded("qbittorrent-5.3.0") // or emulation.Parse(data)
 e, _ := emulation.New(p, clk, rng, emulation.Options{})
 a, _ := e.BuildAnnounce(emulation.AnnounceParams{
     InfoHash: ih, Port: 51413, Uploaded: u, Downloaded: d, Left: 0,
@@ -181,9 +187,9 @@ a, _ := e.BuildAnnounce(emulation.AnnounceParams{
 // a.RawQuery, a.Headers, a.PeerID, a.Key, a.Numwant
 ```
 
-`Emulator` est sûr en concurrence. `Forget(infoHash)` oublie un torrent supprimé ou archivé.
+`Emulator` is safe for concurrent use. `Forget(infoHash)` forgets a deleted or archived torrent.
 
-## Exemple commenté (extrait de `transmission-4.1.4.json`)
+## Annotated example (excerpt of `transmission-4.1.4.json`)
 
 ```jsonc
 {
@@ -191,8 +197,8 @@ a, _ := e.BuildAnnounce(emulation.AnnounceParams{
   "name": "transmission-4.1.4",
   "peerId": {
     "prefix": "-TR4140-",              // -TR + base62(4,1,4) + 0 (stable) + -
-    "suffix": "[0-9a-z]{11}",          // 11 caractères aléatoires...
-    "checksum": "mod36",               // ...+ 1 caractère de somme = 20 octets
+    "suffix": "[0-9a-z]{11}",          // 11 random characters...
+    "checksum": "mod36",               // ...+ 1 checksum character = 20 bytes
     "renewal": {"scope": "torrent"}
   },
   "key": {"pattern": "[0-9A-F]{8}", "renewal": {"scope": "torrent"}},
@@ -200,9 +206,9 @@ a, _ := e.BuildAnnounce(emulation.AnnounceParams{
   "query": [
     {"name": "info_hash", "value": "{info_hash}"},
     {"name": "numwant",   "value": "{numwant}"},
-    {"name": "compact",   "value": "1"},                              // valeur fixe
-    {"name": "event",     "value": "{event}", "omit": ["no-event"]}, // absent d'une annonce régulière
-    {"name": "ipv4",      "value": "{ipv4}", "omit": ["no-ipv4"]}   // absent si PublicIP inconnue ou IPv6
+    {"name": "compact",   "value": "1"},                              // fixed value
+    {"name": "event",     "value": "{event}", "omit": ["no-event"]}, // absent from a regular announce
+    {"name": "ipv4",      "value": "{ipv4}", "omit": ["no-ipv4"]}   // absent if PublicIP is unknown or IPv6
   ],
   "headers": [{"name": "User-Agent", "value": "Transmission/4.1.4"}],
   "numwant": {"none": 80, "started": 80, "completed": 80, "stopped": 0}
@@ -212,42 +218,49 @@ a, _ := e.BuildAnnounce(emulation.AnnounceParams{
 ## Linter (`seedmirage check-profile`)
 
 ```bash
-seedmirage check-profile internal/emulation/profiles      # un dossier (*.json) ou des fichiers
+seedmirage check-profile internal/emulation/profiles      # a folder (*.json) or files
 ```
 
-Affiche un constat par ligne (`<fichier>: <niveau> <code>: <message>`) ou `ok`. Code de sortie **1** s'il y a au moins une erreur, 0 sinon (les avertissements ne font pas échouer). Code : `emulation.Lint` / `emulation.LintData`.
+Prints one finding per line (`<file>: <level> <code>: <message>`) or `ok`. Exit code **1** if there is at least one error, 0
+otherwise (warnings do not fail). Code: `emulation.Lint` / `emulation.LintData`.
 
-| Code | Niveau | Règle |
+| Code | Level | Rule |
 |---|---|---|
-| `parse` | error | JSON illisible ou champ inconnu. |
-| `invalid` | error | Échec de `Validate` (règles de ce document). |
-| `host-header` | error | En-tête `Host` autre que l'entrée de position `{host}`. |
-| `duplicate-param` | error | Paramètre de query en double. |
-| `ua-version` | error | Le `User-Agent` ne contient pas la `version` du profil. |
-| `peerid-prefix` | error | Préfixe de peer_id incohérent avec la version (qBittorrent `-qB5300-`, Deluge `-DE220s-`, Transmission `-TR4140-` ; rTorrent n'est pas vérifié : son préfixe est celui de libtorrent ; Transmission 4.x au-delà d'un chiffre par composante : règle sautée). |
-| `no-user-agent` | warn | Aucun `User-Agent`. |
-| `numwant-atypical` | warn | `numwant` différent de la valeur habituelle de la famille (200 qBittorrent/Deluge, 80 Transmission, -1 rTorrent ; 0 à l'arrêt sauf rTorrent). |
-| `accept-encoding` | warn | `Accept-Encoding` absent, ou différent de celui de la famille, ou annoncé alors que la famille n'en envoie pas. |
-| `accept-decode` | warn | Codage annoncé que le client HTTP ne décode pas (autre que `gzip`, `deflate`, `identity`). |
-| `outdated` | warn | Au moins `MaxVersionsBehind` (2) profils embarqués plus récents dans la même famille. |
+| `parse` | error | Unreadable JSON or unknown field. |
+| `invalid` | error | `Validate` failed (the rules of this document). |
+| `host-header` | error | `Host` header other than the `{host}` position entry. |
+| `duplicate-param` | error | Duplicate query parameter. |
+| `ua-version` | error | The `User-Agent` does not contain the profile's `version`. |
+| `peerid-prefix` | error | peer_id prefix inconsistent with the version (qBittorrent `-qB5300-`, Deluge `-DE220s-`, Transmission `-TR4140-`; rTorrent is not checked: its prefix is libtorrent's; Transmission 4.x beyond one digit per component: rule skipped). |
+| `no-user-agent` | warn | No `User-Agent`. |
+| `numwant-atypical` | warn | `numwant` differs from the family's usual value (200 qBittorrent/Deluge, 80 Transmission, -1 rTorrent; 0 on stop except rTorrent). |
+| `accept-encoding` | warn | `Accept-Encoding` missing, or different from the family's, or advertised when the family does not send one. |
+| `accept-decode` | warn | Advertised coding that the HTTP client does not decode (other than `gzip`, `deflate`, `identity`). |
+| `outdated` | warn | At least `MaxVersionsBehind` (2) newer embedded profiles in the same family. |
 
-Les familles inconnues (captures de clients non couverts) ne subissent que les règles génériques.
+Unknown families (captures of clients that are not covered) only get the generic rules.
 
-## Versions obsolètes (`seedmirage profiles outdated --online`)
+## Outdated versions (`seedmirage profiles outdated --online`)
 
-Interroge les API publiques de versions (GitHub : `qbittorrent/qBittorrent`, `transmission/transmission`, `BiglySoftware/BiglyBT`, `rakshasa/rtorrent` ; tags `deluge-X.Y.Z` de `deluge-torrent/deluge`) et liste les familles dont la dernière version stable est plus récente que le profil embarqué le plus récent (ou n'a aucun profil). Accès réseau **uniquement** avec `--online` ; pas de jeton, `User-Agent: seedmirage-release-check`, résultats mis en cache 1 h dans le processus. Code : `internal/releases` (`New(Config{...}).Check(ctx, embedded)`, URL de base et `http.Client` injectables).
+Queries the public release APIs (GitHub: `qbittorrent/qBittorrent`, `transmission/transmission`, `BiglySoftware/BiglyBT`,
+`rakshasa/rtorrent`; `deluge-X.Y.Z` tags of `deluge-torrent/deluge`) and lists the families whose latest stable version is newer
+than the most recent embedded profile (or that have no profile). Network access **only** with `--online`; no token,
+`User-Agent: seedmirage-release-check`, results cached for 1 hour in the process. Code: `internal/releases`
+(`New(Config{...}).Check(ctx, embedded)`, base URL and `http.Client` injectable). The same check is available from the
+*Profiles* page of the interface.
 
-## Ajouter un profil
+## Adding a profile
 
-1. **Capturer** : `seedmirage capture` sur le vrai client, ou lire son code source (tag précis) et noter dans `references` chaque fichier et plage de lignes consultés.
-2. **Écrire** `internal/emulation/profiles/<famille>-<version>.json` (`source`: `capture` ou `manual`, écarts dans `notes`).
-3. **Linter** : `seedmirage check-profile internal/emulation/profiles` doit être sans erreur ; justifier chaque avertissement dans `notes`.
-4. **Golden** : `go test ./internal/emulation/ -update`, relire les fichiers de `testdata/golden/` contre le code source cité, puis `go test ./internal/emulation/...`.
-5. **Revue** : `make check`, puis pull request (un profil par PR, tableau « Profils embarqués » de ce document à jour).
+1. **Capture**: `seedmirage capture` against the real client, or read its source code (an exact tag) and note in `references` every file and line range read.
+2. **Write** `internal/emulation/profiles/<family>-<version>.json` (`source`: `capture` or `manual`, differences in `notes`).
+3. **Lint**: `seedmirage check-profile internal/emulation/profiles` must report no error; justify every warning in `notes`.
+4. **Golden**: `go test ./internal/emulation/ -update`, review the files of `testdata/golden/` against the cited source code, then `go test ./internal/emulation/...`.
+5. **Review**: `make check`, then a pull request (one profile per PR, with the "Embedded profiles" table of this document up to date).
 
-## Tests golden
+To use a profile without rebuilding seedmirage, import it from the *Profiles* page of the interface.
 
-`internal/emulation/testdata/golden/<profil>-<événement>.txt` contient la query, les en-têtes, le peer_id (hex), la key et
-le `numwant` pour `started`, `regular`, `completed`, `stopped` (graine et horloge fixes), plus `started-ip` (adresse,
-trackerid, torrent privé). Régénération : `go test ./internal/emulation/ -update`, puis relecture contre le code source
-cité dans `references`.
+## Golden tests
+
+`internal/emulation/testdata/golden/<profile>-<event>.txt` holds the query, headers, peer_id (hex), key and `numwant` for
+`started`, `regular`, `completed`, `stopped` (fixed seed and clock), plus `started-ip` (address, trackerid, private torrent).
+Regeneration: `go test ./internal/emulation/ -update`, then review against the source code cited in `references`.
