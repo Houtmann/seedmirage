@@ -1,0 +1,73 @@
+name: Client versions
+
+# Weekly watch: open one issue per emulated client family whose latest stable
+# release is newer than the embedded profile (families without one are skipped).
+# Never creates a duplicate.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build -o seedmirage ./cmd/seedmirage
+      - name: Check client releases
+        id: check
+        run: |
+          set +e
+          ./seedmirage profiles outdated --online --format json > outdated.json
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # 0: up to date, 3: at least one family is behind, anything else: failure.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 3 ]; then exit "$code"; fi
+      - name: Open issues for new versions
+        if: steps.check.outputs.code == '3'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh label create profiles --description "Client profile updates" --color 1d76db || true
+          jq -c '.[] | select(.embedded != "")' outdated.json | while read -r entry; do
+            family=$(jq -r '.family' <<<"$entry")
+            latest=$(jq -r '.latest' <<<"$entry")
+            embedded=$(jq -r '.embedded // ""' <<<"$entry")
+            url=$(jq -r '.url' <<<"$entry")
+            title="Client update: ${family} ${latest}"
+            # Open or closed: an exact title match means this version was already reported.
+            existing=$(gh issue list --state all --search "\"${title}\" in:title" --limit 100 --json title \
+              --jq "[.[] | select(.title == \"${title}\")] | length")
+            if [ "$existing" -gt 0 ]; then
+              echo "Issue already exists: ${title}"
+              continue
+            fi
+            {
+              echo "A new stable release of **${family}** is available."
+              echo
+              echo "- Latest stable version: \`${latest}\`"
+              echo "- Embedded profile: \`${embedded:-none}\`"
+              echo "- Release: ${url}"
+              echo
+              echo "Procedure:"
+              echo
+              echo "1. **Capture**: run \`seedmirage capture\` against the real client, or read its source code at the release tag and note every file read in \`references\`."
+              echo "2. **Profile**: write \`internal/emulation/profiles/${family}-${latest}.json\` and run \`seedmirage check-profile internal/emulation/profiles\`."
+              echo "3. **Golden**: \`go test ./internal/emulation/ -update\`, review the diff against the client source, then \`go test ./internal/emulation/...\`."
+              echo "4. **Release**: \`make check\`, open a pull request, then publish a release."
+              echo
+              echo "See docs/profiles.md (\"Adding a profile\") and docs/capture.md."
+            } > body.md
+            gh issue create --title "$title" --label profiles --body-file body.md
+          done

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -83,13 +84,58 @@ func TestProfilesOutdated(t *testing.T) {
 
 	var out, errb bytes.Buffer
 	code := runProfilesOutdated([]string{"--online", "--api-url", srv.URL}, &out, &errb, srv.Client(), clock.NewFake(time.Unix(0, 0)))
-	if code != 0 {
+	if code != exitOutdated {
 		t.Fatalf("code %d, err %q", code, errb.String())
 	}
 	got := out.String()
 	if !strings.Contains(got, "qbittorrent") || !strings.Contains(got, "9.0.0") || !strings.Contains(got, "biglybt") ||
 		strings.Contains(got, "transmission") || strings.Contains(got, "deluge") || strings.Contains(got, "rtorrent") {
 		t.Errorf("out = %q", got)
+	}
+}
+
+func releaseServer(t *testing.T, qbit, others, deluge string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/qbittorrent/qBittorrent/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"release-` + qbit + `"}`))
+		case "/repos/transmission/transmission/releases/latest", "/repos/BiglySoftware/BiglyBT/releases/latest",
+			"/repos/rakshasa/rtorrent/releases/latest":
+			_, _ = w.Write([]byte(`{"tag_name":"` + others + `"}`))
+		case "/repos/deluge-torrent/deluge/tags":
+			_, _ = w.Write([]byte(`[{"name":"deluge-` + deluge + `"}]`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestProfilesOutdatedJSON(t *testing.T) {
+	srv := releaseServer(t, "9.0.0", "0.0.1", "0.0.1")
+	var out, errb bytes.Buffer
+	code := runProfilesOutdated([]string{"--online", "--format", "json", "--api-url", srv.URL}, &out, &errb, srv.Client(), clock.NewFake(time.Unix(0, 0)))
+	if code != exitOutdated {
+		t.Fatalf("code %d, err %q", code, errb.String())
+	}
+	var got []outdatedJSON
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("invalid JSON %q: %v", out.String(), err)
+	}
+	// biglybt has no embedded profile (empty "embedded"), qbittorrent is behind.
+	if len(got) != 2 || got[0].Family != "biglybt" || got[0].Embedded != "" ||
+		got[1].Family != "qbittorrent" || got[1].Latest != "9.0.0" || got[1].Embedded == "" ||
+		got[1].URL != "https://github.com/qbittorrent/qBittorrent/releases/latest" {
+		t.Errorf("got %+v", got)
+	}
+}
+
+func TestProfilesOutdatedBadFormat(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := runProfilesOutdated([]string{"--online", "--format", "xml"}, &out, &errb, http.DefaultClient, clock.Real()); code != exitUsage {
+		t.Errorf("code %d", code)
 	}
 }
 
