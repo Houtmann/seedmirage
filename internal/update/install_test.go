@@ -207,7 +207,7 @@ func TestDownloadTooLargeAndForeignHost(t *testing.T) {
 	}
 
 	// foreign base, plain http, userinfo, wrong port
-	for _, base := range []string{"https://evil.example/x", "http://github.com/x", "https://user@github.com/x", "https://github.com:8443/x"} {
+	for _, base := range []string{"https://evil.example/x", "http://github.com/x", "https://a:@github.com/x", "https://github.com:8443/x"} {
 		_, err := Source{Base: base}.Fetch(context.Background(), testVersion, goos, goarch, nil)
 		if !errors.Is(err, ErrForeignHost) {
 			t.Errorf("%s: %v", base, err)
