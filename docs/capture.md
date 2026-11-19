@@ -78,6 +78,59 @@ in parallel with trackers on different ports.
 with documentation addresses (192.0.2.10): this is how the fixtures in
 `internal/emulation/testdata/captures/<profile>/` are produced; `TestCapturedFixtures` replays them without a network.
 
+## Verifying the embedded profiles: `make capture-verify`
+
+One command checks, for each open client (qBittorrent, Transmission, Deluge, rTorrent), that the request of the **real** client is
+identical, byte for byte, to the one of the embedded profile. It needs Docker and takes 10 to 15 minutes (libtorrent announces every
+5 minutes at best), so it is **not** part of `make check` nor of the CI.
+
+```bash
+make capture-verify                              # the four clients, in parallel
+make capture-verify CLIENTS=qbittorrent,deluge   # a subset
+QBITTORRENT_VERSION=4.6.7 make capture-verify CLIENTS=qbittorrent
+UPDATE_PROFILE=1 make capture-verify CLIENTS=transmission
+```
+
+For each client, `scripts/capture/verify.sh` starts a capture tracker (loopback, one port per client), starts the container from a clean
+state, drives it with `scripts/capture/<client>.sh`, stops the tracker, then runs `seedmirage capture --compare <profile>`.
+Everything lands in `capture/verify/<client>/` (raw capture, report, tracker log; the folder is recreated at each run).
+
+Variables: `<CLIENT>_VERSION` is the version of the embedded profile to verify (defaults: qbittorrent 5.3.0, transmission 4.1.4,
+deluge 2.2.0, rtorrent 0.16.28) and also gives the Docker tag; `<CLIENT>_PROFILE` overrides the profile (name or file);
+`QBITTORRENT_TAG`, `TRANSMISSION_TAG`, `DELUGE_TAG`, `RTORRENT_TAG` force an image tag (there is no rTorrent 0.16.28 image: the default
+tag is 0.16.25, so its user agent and peer_id prefix are expected to differ).
+
+### `seedmirage capture --compare`
+
+```bash
+seedmirage capture --compare qbittorrent-5.3.0 --out ./capture          # embedded profile, existing capture folder
+seedmirage capture --compare ./my-profile.json --out ./capture
+seedmirage capture --compare qbittorrent-5.3.0 --update-profile --out ./capture
+```
+
+No tracker is started: the `raw.jsonl` of `--out` is replayed against the profile. The report lists, for each field that differs, how
+many announces differ, on which events, what the profile produces and what the client sent:
+
+| Field | Meaning |
+|---|---|
+| `query.order` | order (or set) of the query parameters |
+| `query.<param>` | value or encoding of a parameter (hex case, escaped characters, `numwant` of an event...) |
+| `query.peer_id`, `query.key` | shape only (prefix, alphabet, checksum, encoding): the random part is never compared by value |
+| `headers.order`, `headers.<name>`, `headers.host` | order, case, value of the headers; position of `Host` |
+| `udp.*` | BEP 15 announce: peer_id and key shape, IP, `num_want`, event, BEP 41 options |
+
+The exit status is 0 when everything is identical up to the randomness, 1 otherwise (or when the capture has no announce). The report
+also says what the capture did not cover (no UDP announce, no `stopped`...): an event that was not captured is not verified.
+A difference is information, not an instruction: decide whether the profile or the capture setup is wrong (see "Known limits"
+above: a client library that differs per installation, a container older than the profile).
+
+`--update-profile` (with `--compare`) also writes the profile inferred from the capture as `<name>.candidate.json`: next to the profile
+file if `--compare` names a file, in `--out` for an embedded profile. An existing candidate is never overwritten and an embedded
+profile is never modified: review the candidate, then adopt it by hand (steps of ["Adding a profile"](profiles.md#adding-a-profile)).
+
+In Go: `capture.Compare(profile, records, manifest, capture.DiffOptions{})` returns a `Comparison` (differences grouped by field,
+`Text()` for the report); it calls `Diff` and `DiffUDP` below.
+
 ## Client on the host (µTorrent on Windows, etc.)
 
 1. Run `seedmirage capture --listen <host-LAN-address>:6969 --announce-host <that address>:6969 --out capture`

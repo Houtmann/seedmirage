@@ -53,7 +53,7 @@ services:
   deluge:
     <<: *client
     profiles: ["deluge"]
-    image: lscr.io/linuxserver/deluge:2.2.0
+    image: lscr.io/linuxserver/deluge:${DELUGE_TAG:-2.2.0}
     environment:
       <<: *env
       DELUGE_LOGLEVEL: "error"
@@ -67,7 +67,7 @@ services:
     <<: *client
     profiles: ["rtorrent"]
     # No linuxserver.io image for rTorrent alone: community image, check the tag.
-    image: crazymax/rtorrent-rutorrent:5.3.18-0.16.25
+    image: crazymax/rtorrent-rutorrent:${RTORRENT_TAG:-5.3.18-0.16.25}
     ports:
       - "127.0.0.1:8081:8080"   # ruTorrent (RPC2 compris)
     volumes:

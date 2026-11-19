@@ -3,7 +3,9 @@ VERSION ?= $(patsubst v%,%,$(shell git describe --tags --always --dirty 2>/dev/n
 LDFLAGS := -X main.version=$(VERSION)
 DATA_DIR ?= ./data
 
-.PHONY: build run test lint fmt fmt-check vet check tools css css-check docker up down dist public-check
+CLIENTS ?= qbittorrent transmission deluge rtorrent
+
+.PHONY: build run test lint fmt fmt-check vet check tools css css-check docker up down dist public-check capture-verify
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/seedmirage ./cmd/seedmirage
@@ -64,6 +66,13 @@ down:
 # Multi-OS binaries (darwin arm64/amd64, linux amd64/arm64, windows amd64): archives + SHA256SUMS in dist/.
 dist:
 	sh tools/dist.sh $(VERSION)
+
+# Compares the embedded profiles to the real clients run in Docker (docs/capture.md). Slow (10-15 min), needs
+# Docker: not part of `make check` nor of the CI. make capture-verify CLIENTS=qbittorrent,deluge
+capture-verify: build
+	bash scripts/capture/verify.sh $(subst $(comma), ,$(CLIENTS))
+
+comma := ,
 
 # The repository is public: nothing personal or internal in tracked files (tools/public-check.sh).
 public-check:

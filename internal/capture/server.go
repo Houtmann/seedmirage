@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"seedmirage/internal/clock"
+	"seedmirage/internal/emulation"
 	"seedmirage/internal/trackertest"
 )
 
@@ -156,18 +157,26 @@ func Analyze(dir string, opts Options) (*Result, error) {
 		return res, err
 	}
 	if res.Profile != nil {
-		var buf bytes.Buffer
-		enc := json.NewEncoder(&buf)
-		enc.SetIndent("", "  ")
-		enc.SetEscapeHTML(false)
-		if err := enc.Encode(res.Profile); err != nil {
+		data, err := marshalProfile(res.Profile)
+		if err != nil {
 			return res, err
 		}
-		if err := writeFile(filepath.Join(dir, res.Profile.Name+".json"), buf.Bytes()); err != nil {
+		if err := writeFile(filepath.Join(dir, res.Profile.Name+".json"), data); err != nil {
 			return res, err
 		}
 	}
 	return res, ierr
+}
+
+func marshalProfile(p *emulation.Profile) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(p); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func writeNew(path string, data []byte) error {
