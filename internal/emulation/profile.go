@@ -170,6 +170,49 @@ func (p *Profile) SendsUDPURLData() bool {
 	return p.UDP == nil || p.UDP.URLData == nil || *p.UDP.URLData
 }
 
+// TimingSpec describes how the client schedules its regular announces from the
+// tracker's interval. Every field is optional; a profile without a timing block
+// keeps the announcer's own defaults. The announcer never goes below the
+// tracker's `min interval` whatever this block says (it only raises floors).
+type TimingSpec struct {
+	// MinIntervalSeconds: floor the client applies to the tracker's `interval`
+	// (libtorrent: min_announce_interval, 300 s). 0 = no client floor.
+	MinIntervalSeconds int `json:"minIntervalSeconds,omitempty"`
+	// DefaultIntervalSeconds: interval used when the tracker gives none
+	// (Transmission: 600 s). 0 = the announcer's default.
+	DefaultIntervalSeconds int `json:"defaultIntervalSeconds,omitempty"`
+	// JitterSeconds: symmetric random spread (±) added to the interval.
+	// Absent = the announcer's default spread; 0 = none (the real clients
+	// listed here announce exactly on schedule).
+	JitterSeconds *int `json:"jitterSeconds,omitempty"`
+}
+
+// Limits of TimingSpec values.
+const (
+	maxTimingMinInterval = 3600
+	maxTimingDefault     = 7200
+	maxTimingJitter      = 300
+)
+
+func (t *TimingSpec) validate() error {
+	if t == nil {
+		return nil
+	}
+	if t.MinIntervalSeconds < 0 || t.MinIntervalSeconds > maxTimingMinInterval {
+		return fmt.Errorf("timing.minIntervalSeconds %d hors de [0, %d]", t.MinIntervalSeconds, maxTimingMinInterval)
+	}
+	if t.DefaultIntervalSeconds < 0 || t.DefaultIntervalSeconds > maxTimingDefault {
+		return fmt.Errorf("timing.defaultIntervalSeconds %d hors de [0, %d]", t.DefaultIntervalSeconds, maxTimingDefault)
+	}
+	if t.DefaultIntervalSeconds > 0 && t.DefaultIntervalSeconds < t.MinIntervalSeconds {
+		return errors.New("timing.defaultIntervalSeconds < minIntervalSeconds")
+	}
+	if t.JitterSeconds != nil && (*t.JitterSeconds < 0 || *t.JitterSeconds > maxTimingJitter) {
+		return fmt.Errorf("timing.jitterSeconds %d hors de [0, %d]", *t.JitterSeconds, maxTimingJitter)
+	}
+	return nil
+}
+
 // Profile est un profil de client BitTorrent (format « schema » 1).
 type Profile struct {
 	Schema     int         `json:"schema"`
@@ -187,6 +230,7 @@ type Profile struct {
 	Query    []Param        `json:"query"`
 	Headers  []Header       `json:"headers"`
 	UDP      *UDPSpec       `json:"udp,omitempty"`
+	Timing   *TimingSpec    `json:"timing,omitempty"`
 	Numwant  map[string]int `json:"numwant"` // none, started, completed, stopped
 
 	c *compiled // rempli par Validate
@@ -273,6 +317,9 @@ func (p *Profile) Validate() error {
 		return fail("%v", err)
 	}
 	if err := p.validateHeaders(); err != nil {
+		return fail("%v", err)
+	}
+	if err := p.Timing.validate(); err != nil {
 		return fail("%v", err)
 	}
 	for _, k := range numwantKeys {

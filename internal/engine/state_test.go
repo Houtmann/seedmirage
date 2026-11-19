@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"seedmirage/internal/config"
-	"seedmirage/internal/emulation"
 	"seedmirage/internal/events"
 	"seedmirage/internal/store"
 	"seedmirage/internal/trackertest"
@@ -22,7 +21,7 @@ func (h *harness) engine(cfg config.Config) *Engine {
 	h.t.Helper()
 	eng, err := New(Options{
 		Config: cfg, TorrentsDir: h.dir, ArchiveDir: h.archive, StatePath: h.state, Clock: h.clk,
-		Bus: h.eng.Bus(), Selector: firstSelector{}, LoadProfile: emulation.LoadEmbedded,
+		Bus: h.eng.Bus(), Selector: firstSelector{}, LoadProfile: loadUntimed,
 	})
 	if err != nil {
 		h.t.Fatal(err)

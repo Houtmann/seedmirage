@@ -33,15 +33,14 @@ func serveWithTorrent(t *testing.T, trk *trackertest.HTTPTracker, autoStart bool
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !autoStart {
-		cfg, err := config.Load(layout.Config)
-		if err != nil {
-			t.Fatal(err)
-		}
-		cfg.AutoStart = false
-		if err := cfg.Save(layout.Config); err != nil {
-			t.Fatal(err)
-		}
+	cfg, err := config.Load(layout.Config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.AutoStart = autoStart
+	cfg.StartSpread = 0 // the real clock is used: no delayed start
+	if err := cfg.Save(layout.Config); err != nil {
+		t.Fatal(err)
 	}
 	data := torrenttest.Build(torrenttest.Options{Name: "demo", Announce: trk.AnnounceURL()})
 	if err := os.WriteFile(filepath.Join(layout.Torrents, "demo.torrent"), data, 0o600); err != nil {

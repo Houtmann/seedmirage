@@ -156,3 +156,30 @@ func TestLintHostPlacement(t *testing.T) {
 		t.Errorf("Host avec une autre valeur doit être refusé : %v", fs)
 	}
 }
+
+func TestLintTiming(t *testing.T) {
+	p := freshProfile(t, "qbittorrent-5.3.0")
+	if p.Timing == nil || p.Timing.MinIntervalSeconds != 300 {
+		t.Fatalf("embedded profile without its timing block: %+v", p.Timing)
+	}
+	neg := -1
+	for name, tm := range map[string]*TimingSpec{
+		"negative floor":    {MinIntervalSeconds: -1},
+		"huge floor":        {MinIntervalSeconds: 1 << 20},
+		"negative jitter":   {JitterSeconds: &neg},
+		"default under min": {MinIntervalSeconds: 300, DefaultIntervalSeconds: 100},
+	} {
+		q := freshProfile(t, "qbittorrent-5.3.0")
+		q.Timing = tm
+		if fs := Lint(q); !hasFinding(fs, LevelError, CodeInvalid) {
+			t.Errorf("%s: no error: %v", name, fs)
+		}
+	}
+	// A block is optional and round-trips through LintData.
+	q := freshProfile(t, "qbittorrent-5.3.0")
+	q.Timing = nil
+	data, _ := json.Marshal(q)
+	if fs := LintData(data); HasError(fs) {
+		t.Errorf("profile without timing: %v", fs)
+	}
+}

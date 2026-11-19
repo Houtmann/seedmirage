@@ -23,7 +23,9 @@
     {"url": "https://github.com/transmission/transmission/blob/4.1.4/CMakeLists.txt#L138-L165", "note": "préfixe de peer_id : -TR + base62(major) + base62(minor) + base62(patch) + 0 (stable) + - soit -TR4140-"},
     {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/session.cc#L321-L324", "note": "User-Agent = TR_NAME \"/\" SHORT_VERSION_STRING soit Transmission/4.1.4"},
     {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web.cc#L578", "note": "CURLOPT_ACCEPT_ENCODING = \"\" : libcurl envoie Accept-Encoding avec tous les codages compilés (valeur dépendant de la libcurl : incertain)"},
-    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web.cc#L621", "note": "CURLOPT_USERAGENT avec l'agent ci-dessus ; aucun autre en-tête posé par Transmission pour les annonces"}
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web.cc#L621", "note": "CURLOPT_USERAGENT avec l'agent ci-dessus ; aucun autre en-tête posé par Transmission pour les annonces"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer.cc#L1160-L1167", "note": "annonce périodique à now + announceIntervalSec, l'interval du tracker étant retenu sans borne ; aucun aléa (celui de getRetryInterval ne vaut qu'après un échec)"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer.cc#L534", "note": "DefaultAnnounceIntervalSec = 600 s tant que le tracker ne donne pas d'interval"}
   ],
   "peerId": {
     "prefix": "-TR4140-",
@@ -58,5 +60,6 @@
     {"name": "Accept-Encoding", "value": "deflate, gzip"}
   ],
   "udp": {"urlData": false},
+  "timing": {"defaultIntervalSeconds": 600, "jitterSeconds": 0},
   "numwant": {"none": 80, "started": 80, "completed": 80, "stopped": 0}
 }

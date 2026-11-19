@@ -25,6 +25,7 @@ read, and says in `notes` what remains uncertain or is not reproduced.
 | `query` | ordered list | Parameters `{name, value, omit?}`. |
 | `headers` | ordered list | Headers `{name, value}` with a fixed value, in sending order. `Host` is added by the HTTP client, first; to place it elsewhere (BiglyBT/JDK), the entry `{"name": "Host", "value": "{host}"}` sets its position (the only value allowed). |
 | `udp` | object, optional | `urlData` (boolean, true by default): the client attaches the BEP 41 "URLData" option (path and query of the tracker URL) to its UDP announces. libtorrent (qBittorrent, Deluge) sends it, Transmission does not: confirmed by capture. |
+| `timing` | object, optional | How the client schedules regular announces, see "timing". Absent: the announcer's own defaults. |
 | `numwant` | object | `none`, `started`, `completed`, `stopped`: the four keys are mandatory (integers >= -1; -1 = tracker default: the client does not send `numwant` over HTTP and sends -1 over UDP, like rTorrent). |
 
 Unknown fields are rejected (`Parse`): a profile is a contract.
@@ -93,6 +94,18 @@ value as is (the real client does not encode it; only current use: Transmission'
 | `no-key` | the profile has no `key` |
 | `no-tracker-id` | no trackerid known |
 | `public-torrent` | the torrent does not have the `private` flag |
+
+### `timing`
+
+Optional, compatible with `schema: 1`. All fields are optional and describe what the real client does with the tracker's `interval`:
+
+| Field | Meaning |
+|---|---|
+| `minIntervalSeconds` | Floor the client applies to the tracker's `interval` (libtorrent `min_announce_interval`: 300 s). 0 or absent: no client floor. |
+| `defaultIntervalSeconds` | Interval used when the tracker sends none (Transmission: 600 s). |
+| `jitterSeconds` | Symmetric random spread added to the interval. `0`: none, the client announces exactly on schedule. Absent: the announcer's default spread (±5 s). |
+
+The block can only make announces rarer: the announcer never announces before the tracker's `min interval` (or the `interval` when there is none), whatever the profile says, and keeps its own safety bounds (60 s to 2 h) on the interval. `started`, `stopped` and `completed` are not affected. Values come from the client's source, cited in `references`; a value that could not be verified there is left out rather than guessed. `seedmirage check-profile` validates the block (non-negative values, `defaultIntervalSeconds >= minIntervalSeconds`, `jitterSeconds <= 300`).
 
 ### `headers`
 

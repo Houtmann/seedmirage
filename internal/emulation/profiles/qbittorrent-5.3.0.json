@@ -26,7 +26,9 @@
     {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-5.3.0/src/base/bittorrent/sessionimpl.cpp#L1806-L1811", "note": "peer_fingerprint = generate_fingerprint(PEER_ID, 5, 3, 0, 0) soit -qB5300- ; user_agent = USER_AGENT"},
     {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-5.3.0/src/base/bittorrent/sessionimpl.cpp#L133-L134", "note": "PEER_ID = qB, USER_AGENT = qBittorrent/ + QBT_VERSION_2 (5.3.0)"},
     {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-5.3.0/src/base/version.h.in#L31-L47", "note": "version 5.3.0, QBT_VERSION_BUILD 0, statut vide (stable)"},
-    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/fingerprint.cpp#L42-L75", "note": "generate_fingerprint : tiret, 2 lettres, 4 caractères de version (0-9 puis A-Z), tiret"}
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/fingerprint.cpp#L42-L75", "note": "generate_fingerprint : tiret, 2 lettres, 4 caractères de version (0-9 puis A-Z), tiret"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3589-L3617", "note": "torrent::tracker_response : next_announce = now + max(interval, min_announce_interval), min_announce = now + min_interval ; aucune gigue ajoutée"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/settings_pack.cpp#L306", "note": "min_announce_interval = 5 * 60 par défaut"}
   ],
   "peerId": {
     "prefix": "-qB5300-",
@@ -63,5 +65,6 @@
     {"name": "Accept-Encoding", "value": "gzip"},
     {"name": "Connection", "value": "close"}
   ],
+  "timing": {"minIntervalSeconds": 300, "jitterSeconds": 0},
   "numwant": {"none": 200, "started": 200, "completed": 200, "stopped": 0}
 }

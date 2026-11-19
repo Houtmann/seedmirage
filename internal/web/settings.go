@@ -216,6 +216,27 @@ func pausesField() fieldDef {
 	}
 }
 
+// durationField is a text field holding a Go duration ("3m", "90s"); 0 = off.
+func durationField(name string, ptr func(*config.Config) *config.Duration) fieldDef {
+	return fieldDef{
+		Name: name, Kind: "text",
+		get: func(c *config.Config) string { return time.Duration(*ptr(c)).String() },
+		set: func(c *config.Config, raw string) error {
+			raw = strings.TrimSpace(raw)
+			if raw == "0" {
+				*ptr(c) = 0
+				return nil
+			}
+			d, err := time.ParseDuration(raw)
+			if err != nil {
+				return fieldMsg{Key: "err.duration"}
+			}
+			*ptr(c) = config.Duration(d)
+			return nil
+		},
+	}
+}
+
 // settingsSections is the form layout. Titles and intros are the catalog keys
 // "settings.sec.<ID>.title" and ".intro".
 func settingsSections() []sectionDef {
@@ -280,6 +301,9 @@ func settingsSections() []sectionDef {
 			boolField("simulateDownload", func(c *config.Config) *bool { return &c.SimulateDownload }),
 			intField("minDownloadRate", func(c *config.Config) *int { return &c.MinDownloadRate }),
 			intField("maxDownloadRate", func(c *config.Config) *int { return &c.MaxDownloadRate }),
+			durationField("startRamp", func(c *config.Config) *config.Duration { return &c.StartRamp }),
+			durationField("startSpread", func(c *config.Config) *config.Duration { return &c.StartSpread }),
+			durationField("minSession", func(c *config.Config) *config.Duration { return &c.MinSession }),
 		}},
 		{ID: "schedule", Fields: []fieldDef{
 			boolField("schedule.enabled", func(c *config.Config) *bool { return &c.Schedule.Enabled }),

@@ -149,8 +149,16 @@ func New(t *torrent.Torrent, deps Deps, opts Options) (*Announcer, error) {
 	if t == nil || deps.Emulator == nil || deps.Trackers == nil || deps.Stats == nil || deps.Clock == nil || deps.Rand == nil {
 		return nil, errors.New("announce: torrent, émulateur, trackers, stats, horloge et aléa obligatoires")
 	}
+	opts = opts.withDefaults()
+	// An emulator that exposes its profile (*emulation.Emulator) tunes the
+	// interval handling to the emulated client; others keep the defaults.
+	if pe, ok := deps.Emulator.(interface{ Profile() *emulation.Profile }); ok {
+		if p := pe.Profile(); p != nil {
+			opts = opts.withTiming(p.Timing)
+		}
+	}
 	a := &Announcer{
-		t: t, deps: deps, opts: opts.withDefaults(),
+		t: t, deps: deps, opts: opts,
 		trackerIDs: make(map[string]string),
 		stopCh:     make(chan struct{}),
 		done:       make(chan struct{}),

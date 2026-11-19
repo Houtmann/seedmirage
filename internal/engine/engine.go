@@ -27,6 +27,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/binary"
@@ -38,6 +39,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -169,8 +171,11 @@ type Engine struct {
 	lastScan time.Time
 	// lastIdleRotation : dernière rotation pour inactivité (opMu).
 	lastIdleRotation time.Time
-	annCtx           context.Context
-	annStop          context.CancelFunc
+	// pending: torrents picked but whose start is delayed by startSpread
+	// (opMu). They occupy a slot and are launched by launchDue.
+	pending map[torrent.InfoHash]time.Time
+	annCtx  context.Context
+	annStop context.CancelFunc
 	// lastFlush : dernier flush de state.json ; touché par Start puis par la
 	// seule boucle de contrôle (jamais en parallèle).
 	lastFlush time.Time
@@ -208,10 +213,11 @@ func New(opts Options) (*Engine, error) {
 		clk: opts.Clock, log: opts.Logger, bus: opts.Bus, mux: opts.Mux, sel: opts.Selector,
 		load: opts.LoadProfile, poll: opts.PollInterval, stopTimeout: opts.StopTimeout,
 		rng: opts.Rand, cfg: opts.Config,
-		seeds: make(map[torrent.InfoHash]*seed),
-		hist:  make(map[torrent.InfoHash]*history),
-		trk:   make(map[string]*trackerCount),
-		wake:  make(chan struct{}, 1),
+		seeds:   make(map[torrent.InfoHash]*seed),
+		pending: make(map[torrent.InfoHash]time.Time),
+		hist:    make(map[torrent.InfoHash]*history),
+		trk:     make(map[string]*trackerCount),
+		wake:    make(chan struct{}, 1),
 	}
 	if e.clk == nil {
 		e.clk = clock.Real()
@@ -276,6 +282,7 @@ func New(opts Options) (*Engine, error) {
 	e.disp = bandwidth.New(dcfg)
 	e.disp.SetCaps(capsOf(e.cfg))
 	e.disp.SetDownloadRates(downloadRatesOf(e.cfg))
+	e.disp.SetRamp(time.Duration(e.cfg.StartRamp))
 	return e, nil
 }
 
@@ -437,6 +444,7 @@ func (e *Engine) Start(ctx context.Context) error {
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	e.annCtx, e.annStop = context.WithCancel(context.WithoutCancel(ctx))
+	clear(e.pending)
 	e.lastScan = e.clk.Now()
 	e.lastFlush = e.lastScan
 	e.mu.Lock()
@@ -485,6 +493,7 @@ func (e *Engine) Stop(ctx context.Context) error {
 
 	e.opMu.Lock()
 	defer e.opMu.Unlock()
+	clear(e.pending)
 	err := e.retire(ctx, e.dropsFor(e.allSeeds(), ""))
 	e.annStop()
 	// Flush final, après les « stopped » (retire a déjà versé les compteurs).
@@ -529,12 +538,14 @@ func (e *Engine) tickLocked(ctx context.Context) {
 	e.collect()
 	parent := opContext(ctx)
 	if e.pause(parent) {
+		clear(e.pending)
 		return
 	}
 	if now := e.clk.Now(); now.Sub(e.lastScan) >= e.poll {
 		e.lastScan = now
 		e.scan(parent)
 	}
+	e.launchDue()
 	e.rotate(parent)
 }
 
@@ -687,12 +698,19 @@ func (e *Engine) retireReason(cfg config.Config, s *seed) string {
 	case s.failed.Load() || st.Phase == announce.PhaseFailed:
 		return ReasonFailures
 	case cfg.RatioTarget > 0 && s.t.Size > 0 &&
-		float64(ratioBytes) >= cfg.RatioTarget*float64(s.t.Size):
+		float64(ratioBytes) >= cfg.RatioTarget*float64(s.t.Size) && !e.tooYoung(cfg, s, st):
 		return ReasonRatio
 	case !cfg.KeepIdleTorrents && st.Announced && st.Leechers == 0 && !e.downloading(s):
 		return ReasonIdle
 	}
 	return ""
+}
+
+// tooYoung: the torrent still has leechers and has not run for minSession yet,
+// so it is not stopped on its ratio target or rotated out. opMu or mu not needed.
+func (e *Engine) tooYoung(cfg config.Config, s *seed, st announce.State) bool {
+	minRun := time.Duration(cfg.MinSession)
+	return minRun > 0 && st.Announced && st.Leechers > 0 && e.clk.Now().Sub(s.started) < minRun
 }
 
 // downloading : le torrent est encore en téléchargement simulé (left > 0).
@@ -776,7 +794,7 @@ func (e *Engine) fill() {
 	tried := make(map[torrent.InfoHash]bool)
 	for {
 		e.mu.Lock()
-		free := e.cfg.MaxActiveTorrents - len(e.seeds)
+		free := e.cfg.MaxActiveTorrents - len(e.seeds) - len(e.pending)
 		running := e.running
 		sel := e.sel
 		if sel == nil {
@@ -788,7 +806,8 @@ func (e *Engine) fill() {
 		var cands []*torrent.Torrent
 		if running && free > 0 {
 			for _, t := range e.lib.Torrents() {
-				if _, active := e.seeds[t.InfoHash]; !active && !tried[t.InfoHash] {
+				_, delayed := e.pending[t.InfoHash]
+				if _, active := e.seeds[t.InfoHash]; !active && !delayed && !tried[t.InfoHash] {
 					cands = append(cands, t)
 				}
 			}
@@ -803,7 +822,67 @@ func (e *Engine) fill() {
 		}
 		for _, t := range picks {
 			tried[t.InfoHash] = true
-			e.launch(t)
+			e.startOrDefer(t)
+		}
+	}
+}
+
+// startOrDefer starts t now, or after a random delay in [0, startSpread] so
+// that torrents do not all announce `started` at the same instant. The delay
+// comes from the engine's injectable source. opMu held.
+func (e *Engine) startOrDefer(t *torrent.Torrent) {
+	e.mu.Lock()
+	spread := time.Duration(e.cfg.StartSpread)
+	e.mu.Unlock()
+	if spread <= 0 {
+		e.launch(t)
+		return
+	}
+	delay := time.Duration(e.rng.Int64N(int64(spread) + 1))
+	if delay <= 0 {
+		e.launch(t)
+		return
+	}
+	e.pending[t.InfoHash] = e.clk.Now().Add(delay)
+}
+
+// launchDue launches the delayed torrents whose time has come, if they are
+// still in the library, not active and a slot is free. opMu held.
+func (e *Engine) launchDue() {
+	if len(e.pending) == 0 {
+		return
+	}
+	now := e.clk.Now()
+	type due struct {
+		h  torrent.InfoHash
+		at time.Time
+	}
+	var ready []due
+	for h, at := range e.pending {
+		if !at.After(now) {
+			ready = append(ready, due{h, at})
+		}
+	}
+	slices.SortFunc(ready, func(a, b due) int {
+		if c := a.at.Compare(b.at); c != 0 {
+			return c
+		}
+		return bytes.Compare(a.h[:], b.h[:])
+	})
+	for _, d := range ready {
+		delete(e.pending, d.h)
+		e.mu.Lock()
+		_, active := e.seeds[d.h]
+		free := e.running && len(e.seeds) < e.cfg.MaxActiveTorrents
+		e.mu.Unlock()
+		if active || !free {
+			continue
+		}
+		for _, t := range e.lib.Torrents() {
+			if t.InfoHash == d.h {
+				e.launch(t)
+				break
+			}
 		}
 	}
 }
@@ -1023,6 +1102,9 @@ func (e *Engine) ApplyConfig(cfg config.Config) error {
 	}
 	if cfg.Caps != old.Caps {
 		e.disp.SetCaps(capsOf(cfg))
+	}
+	if cfg.StartRamp != old.StartRamp {
+		e.disp.SetRamp(time.Duration(cfg.StartRamp))
 	}
 	if cfg.MinDownloadRate != old.MinDownloadRate || cfg.MaxDownloadRate != old.MaxDownloadRate {
 		e.disp.SetDownloadRates(downloadRatesOf(cfg))

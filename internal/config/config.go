@@ -67,6 +67,16 @@ type Config struct {
 	SimulateDownload bool `json:"simulateDownload"`
 	MinDownloadRate  int  `json:"minDownloadRate"`
 	MaxDownloadRate  int  `json:"maxDownloadRate"`
+	// StartRamp: after `started`, a torrent's upload climbs linearly from 0 to
+	// its normal level over this long. 0 = no ramp.
+	StartRamp Duration `json:"startRamp"`
+	// StartSpread: torrents are started (engine start, refill after a
+	// rotation) after a random delay in [0, StartSpread] instead of all at
+	// once. 0 = start at once.
+	StartSpread Duration `json:"startSpread"`
+	// MinSession: a torrent that still has leechers is neither rotated out
+	// nor stopped on its ratio target before it has run this long. 0 = no minimum.
+	MinSession Duration `json:"minSession"`
 }
 
 // Caps are the plausibility caps. Speeds are in KiB/s like uploadRate*.
@@ -97,6 +107,9 @@ func Defaults() Config {
 		UpdateCheck:        true,
 		MinDownloadRate:    100,
 		MaxDownloadRate:    2000,
+		StartRamp:          Duration(3 * time.Minute),
+		StartSpread:        Duration(2 * time.Minute),
+		MinSession:         Duration(30 * time.Minute),
 	}
 }
 
@@ -208,6 +221,11 @@ func (c Config) Issues() Issues {
 	}
 	if !(c.Caps.SwarmShare > 0 && c.Caps.SwarmShare <= 1) {
 		errs.add("caps.swarmShare", "swarmShare", "must be in ]0,1]")
+	}
+	for name, v := range map[string]Duration{"startRamp": c.StartRamp, "startSpread": c.StartSpread, "minSession": c.MinSession} {
+		if v < 0 {
+			errs.add(name, "min0", "must be >= 0 (0 = off)")
+		}
 	}
 	c.Schedule.validate(errs)
 	return errs

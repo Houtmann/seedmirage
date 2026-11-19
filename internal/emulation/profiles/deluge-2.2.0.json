@@ -27,7 +27,9 @@
     {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L5226-L5238", "note": "tracker_key() : 32 bits d'un SHA-1 de (adresse du torrent, storage, adresse de la session) : stable par torrent pour le processus, 32 bits sans structure"},
     {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3166-L3190", "note": "ipv4/ipv6 : hors mode anonyme et pour un torrent privé seulement, adresses des sockets d'écoute non locales"},
     {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3193-L3194", "note": "numwant = 0 pour stopped, sinon le réglage num_want"},
-    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/settings_pack.cpp#L273", "note": "num_want = 200 par défaut"}
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/settings_pack.cpp#L273", "note": "num_want = 200 par défaut"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3589-L3617", "note": "torrent::tracker_response : next_announce = now + max(interval, min_announce_interval), min_announce = now + min_interval ; aucune gigue ajoutée"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/settings_pack.cpp#L306", "note": "min_announce_interval = 5 * 60 par défaut"}
   ],
   "peerId": {
     "prefix": "-DE220s-",
@@ -64,5 +66,6 @@
     {"name": "Accept-Encoding", "value": "gzip"},
     {"name": "Connection", "value": "close"}
   ],
+  "timing": {"minIntervalSeconds": 300, "jitterSeconds": 0},
   "numwant": {"none": 200, "started": 200, "completed": 200, "stopped": 0}
 }

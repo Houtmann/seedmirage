@@ -30,6 +30,18 @@ func (firstSelector) Pick(c []*torrent.Torrent, n int) []*torrent.Torrent {
 	return c[:min(n, len(c))]
 }
 
+// loadUntimed loads an embedded profile without its timing block: most tests
+// use short tracker intervals that a client floor (libtorrent: 300 s) would
+// raise. Tests of the timing block load profiles with emulation.LoadEmbedded.
+func loadUntimed(name string) (*emulation.Profile, error) {
+	p, err := emulation.LoadEmbedded(name)
+	if err != nil {
+		return nil, err
+	}
+	p.Timing = nil
+	return p, nil
+}
+
 type harness struct {
 	t       *testing.T
 	dir     string
@@ -50,7 +62,8 @@ func baseConfig() config.Config {
 	cfg.MaxActiveTorrents = 2
 	cfg.Selection = config.SelectionRandom // pas de scrape dans les tests qui comptent les requêtes ; SwarmSelector : scrape_test.go
 	cfg.Profile = "qbittorrent-5.3.0"
-	cfg.Caps.SwarmBudget = false // the swarm budget has its own test (swarm_budget_test.go)
+	cfg.StartRamp, cfg.StartSpread, cfg.MinSession = 0, 0, 0 // temporal realism has its own tests (timing_test.go)
+	cfg.Caps.SwarmBudget = false                             // the swarm budget has its own test (swarm_budget_test.go)
 	return cfg
 }
 
@@ -79,7 +92,7 @@ func newHarness(t *testing.T, mut func(*config.Config)) *harness {
 	}
 	eng, err := New(Options{
 		Config: cfg, TorrentsDir: h.dir, ArchiveDir: h.archive, StatePath: h.state, Clock: h.clk, Bus: bus,
-		Selector: sel, LoadProfile: emulation.LoadEmbedded,
+		Selector: sel, LoadProfile: loadUntimed,
 	})
 	if err != nil {
 		t.Fatal(err)

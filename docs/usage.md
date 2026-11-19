@@ -122,6 +122,9 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 | Bound upload by swarm demand (`caps.swarmBudget`) | Over 24 hours a torrent uploads at most your share of what its swarm could have downloaded: `share × (completions × size + leechers × size × 0.5)`, where `share = min(1/(seeders+1), swarmShare)`. Completions are only counted when the tracker reports them. The speed fades towards 0 as the budget is used up. | on |
 | Simulate a download (`simulateDownload`) | A torrent seen for the first time first "downloads", then seeds. Applies to torrents added afterwards. | off |
 | Minimum / maximum download, KiB/s (`minDownloadRate`, `maxDownloadRate`) | Bounds of the simulated download speed. | 100 / 2000 |
+| Upload ramp-up after start (`startRamp`) | After a torrent starts, its upload climbs linearly from 0 to its normal level over this long (`3m`, `90s`). It only ever lowers the speed: caps and the swarm budget still apply. `0` = no ramp. | 3m |
+| Staggered starts (`startSpread`) | Torrents start after a random delay up to this long, at launch and after a rotation, instead of all at once. `0` = start at once. | 2m |
+| Minimum session length (`minSession`) | A torrent that still has leechers is not rotated out or stopped on the ratio target before it has run this long. `0` = no minimum. | 30m |
 
 ### Hourly schedule (`schedule`)
 

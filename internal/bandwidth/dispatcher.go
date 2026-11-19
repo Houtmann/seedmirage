@@ -63,6 +63,10 @@ type entry struct {
 	win               *window       // upload sur 24 h (si DailyRatioMax > 0 ou budget d'essaim)
 	comp              []compSample  // completions counter history (tracker scrape), for the swarm budget
 
+	// sessionStart : instant de ResetSession (nouvelle session) ; zéro = jamais
+	// remis à zéro, donc pas de rampe.
+	sessionStart time.Time
+
 	// Téléchargement simulé : sim est vrai après SetProgress. Tant que
 	// progress < size, le torrent « télécharge » à dlSpeed et son upload est
 	// réduit (voir recalcLocked). progress ne décroît jamais et reste ≤ size.
@@ -102,6 +106,7 @@ type Dispatcher struct {
 	caps     Caps
 	dlMin    int64 // vitesse de téléchargement simulée, bornes en o/s
 	dlMax    int64
+	ramp     time.Duration // durée de la rampe de vitesse après ResetSession (0 : aucune)
 	torrents map[Hash]*entry
 	last     time.Time
 	started  bool
@@ -221,6 +226,14 @@ func (d *Dispatcher) SetProgress(h Hash, size, progress int64) {
 	})
 }
 
+// SetRamp fixe la durée de la montée en charge d'une session : après
+// ResetSession, la vitesse d'un torrent croît linéairement de 0 à sa valeur
+// normale sur cette durée. La rampe ne fait que baisser la vitesse (les plafonds
+// et le budget d'essaim s'appliquent avant) ; d ≤ 0 la désactive.
+func (d *Dispatcher) SetRamp(ramp time.Duration) {
+	d.mutate(func() { d.ramp = max(ramp, 0) })
+}
+
 // ResetSession remet à zéro les compteurs de session d'un torrent (nouveau
 // `started`) ; la progression du téléchargement simulé est conservée.
 func (d *Dispatcher) ResetSession(h Hash) {
@@ -228,6 +241,7 @@ func (d *Dispatcher) ResetSession(h Hash) {
 		if e, ok := d.torrents[h]; ok {
 			e.uploaded, e.rem = 0, 0
 			e.startProg = e.progress
+			e.sessionStart = d.clk.Now()
 		}
 	})
 }
@@ -474,6 +488,7 @@ func (d *Dispatcher) recalcLocked(now time.Time) *notification {
 	for i, h := range hashes {
 		s := speeds[i]
 		e := d.torrents[h]
+		s = d.rampedLocked(e, s, now)
 		if e.speed != s {
 			e.speed, changed = s, true
 		}
@@ -483,6 +498,25 @@ func (d *Dispatcher) recalcLocked(now time.Time) *notification {
 	}
 	d.seq++
 	return &notification{seq: d.seq, speeds: d.speedsLocked()}
+}
+
+// rampedLocked applique la rampe de session à la vitesse s : s × écoulé / rampe
+// tant que la session a moins de d.ramp. Jamais supérieure à s. L'excédent
+// n'est pas redistribué : la vitesse globale n'est qu'un maximum et les
+// autres torrents ne doivent pas accélérer parce qu'un torrent démarre.
+func (d *Dispatcher) rampedLocked(e *entry, s int64, now time.Time) int64 {
+	if d.ramp <= 0 || e.sessionStart.IsZero() {
+		return s
+	}
+	el := now.Sub(e.sessionStart)
+	if el >= d.ramp {
+		return s
+	}
+	if el <= 0 {
+		return 0
+	}
+	// Millisecondes : s (≤ ~1e10 o/s) × ms (≤ ~1e7) reste dans un int64.
+	return s * el.Milliseconds() / max(d.ramp.Milliseconds(), 1)
 }
 
 // allocate répartit global (o/s) proportionnellement à weights, en entiers,

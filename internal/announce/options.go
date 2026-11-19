@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/netip"
 	"time"
+
+	"seedmirage/internal/emulation"
 )
 
 // Valeurs par défaut (surchargeables par Options).
@@ -83,6 +85,33 @@ func (o Options) withDefaults() Options {
 	}
 	if o.Logger == nil {
 		o.Logger = slog.New(slog.DiscardHandler)
+	}
+	return o
+}
+
+// withTiming applies the profile's timing block to the (already defaulted)
+// options. It can only raise the interval floor, so a profile never makes the
+// announcer announce more often than `min interval` allows; jitter and the
+// default interval are replaced by the client's own values. A nil block keeps
+// the options as they are.
+func (o Options) withTiming(t *emulation.TimingSpec) Options {
+	if t == nil {
+		return o
+	}
+	if floor := time.Duration(t.MinIntervalSeconds) * time.Second; floor > o.MinInterval {
+		o.MinInterval = floor
+		o.MaxInterval = max(o.MaxInterval, floor)
+	}
+	if d := time.Duration(t.DefaultIntervalSeconds) * time.Second; d > 0 {
+		o.DefaultInterval = d
+	}
+	if t.JitterSeconds != nil {
+		// 0 means "no jitter" for the client; a negative option disables it.
+		if j := time.Duration(*t.JitterSeconds) * time.Second; j > 0 {
+			o.IntervalJitter = j
+		} else {
+			o.IntervalJitter = -1
+		}
 	}
 	return o
 }

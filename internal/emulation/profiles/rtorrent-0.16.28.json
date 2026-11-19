@@ -22,7 +22,8 @@
     {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/configure.ac#L69", "note": "USER_AGENT = PACKAGE \"/\" VERSION soit rtorrent/0.16.28"},
     {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/core/download_factory.cc#L205-L217", "note": "tracker_key : relue du fichier de session (clé rtorrent.key) sinon random() % (UINT32_MAX - 1) + 1 ; une key par torrent, conservée entre les lancements"},
     {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/core/download_factory.cc#L282", "note": "d.tracker_numwant.set reçoit trackers.numwant"},
-    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/command_tracker.cc#L132", "note": "trackers.numwant = -1 par défaut : aucun paramètre numwant dans l'annonce"}
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/command_tracker.cc#L132", "note": "trackers.numwant = -1 par défaut : aucun paramètre numwant dans l'annonce"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/tracker/tracker_controller.cc#L530-L541", "note": "receive_success : prochain délai = normal_interval du tracker, sans borne ni aléa (le plancher de 300 s de tracker_next_timeout_promiscuous ne vaut que pour le mode multi-trackers)"}
   ],
   "peerId": {
     "prefix": "-lt101C-",
@@ -52,5 +53,6 @@
     {"name": "Accept-Encoding", "value": "deflate, gzip"}
   ],
   "udp": {"urlData": false},
+  "timing": {"jitterSeconds": 0},
   "numwant": {"none": -1, "started": -1, "completed": -1, "stopped": -1}
 }

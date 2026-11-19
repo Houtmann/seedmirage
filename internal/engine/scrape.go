@@ -360,6 +360,9 @@ func (e *Engine) rotateIdle(parent context.Context, cfg config.Config, seeds []*
 		if ns == 0 || now.Sub(time.Unix(0, ns)) < after {
 			continue
 		}
+		if ms := time.Duration(cfg.MinSession); ms > 0 && now.Sub(s.started) < ms {
+			continue // a session is never cut before its minimum length
+		}
 		if victim == nil || ns < since {
 			victim, since = s, ns
 		}
@@ -376,5 +379,5 @@ func (e *Engine) rotateIdle(parent context.Context, cfg config.Config, seeds []*
 	if err := e.retire(parent, []drop{{s: victim}}); err != nil {
 		e.log.Warn("rotation: arrêt", "err", err)
 	}
-	e.launch(cand)
+	e.startOrDefer(cand)
 }
