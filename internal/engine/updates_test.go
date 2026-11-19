@@ -53,3 +53,73 @@ func TestNotifyUpdatePublishes(t *testing.T) {
 		t.Errorf("detail = %q", ev.Detail)
 	}
 }
+
+type fakeInstaller struct {
+	block string
+	prog  update.Progress
+	err   error
+}
+
+func (f *fakeInstaller) Start() error              { return f.err }
+func (f *fakeInstaller) Progress() update.Progress { return f.prog }
+func (f *fakeInstaller) Block() string             { return f.block }
+
+func TestUpdateStateInstallable(t *testing.T) {
+	h := newHarness(t, nil)
+	rel := &update.Release{Version: "2.0.0"}
+	h.eng.SetUpdates(fakeUpdates{supported: true, st: update.State{Current: "1.0.0", Latest: rel}})
+	if st := h.eng.UpdateState(); st.Installable {
+		t.Error("installable without an installer")
+	}
+	if err := h.eng.StartUpdateInstall(); err == nil {
+		t.Error("StartUpdateInstall without installer succeeded")
+	}
+	in := &fakeInstaller{}
+	h.eng.SetInstaller(in)
+	if st := h.eng.UpdateState(); !st.Installable || st.Installing || st.AutoUpdate {
+		t.Errorf("state = %+v", st)
+	}
+	in.block = update.BlockReadOnly
+	if st := h.eng.UpdateState(); st.Installable || st.Block != update.BlockReadOnly {
+		t.Errorf("blocked state = %+v", st)
+	}
+	in.block, in.prog = "", update.Progress{Stage: update.StageDownloading}
+	if st := h.eng.UpdateState(); !st.Installing {
+		t.Errorf("installing state = %+v", st)
+	}
+}
+
+func TestAutoInstallDueWaitsForQuietMinute(t *testing.T) {
+	h := newHarness(t, func(c *config.Config) { c.AutoUpdate = true })
+	if h.eng.AutoInstallDue() {
+		t.Fatal("due without installer")
+	}
+	h.eng.SetInstaller(&fakeInstaller{})
+	if !h.eng.AutoInstallDue() {
+		t.Fatal("not due although nothing started")
+	}
+	h.eng.mu.Lock()
+	h.eng.lastStarted = h.clk.Now()
+	h.eng.mu.Unlock()
+	if h.eng.AutoInstallDue() {
+		t.Fatal("due right after a start")
+	}
+	h.clk.Advance(time.Minute)
+	if !h.eng.AutoInstallDue() {
+		t.Fatal("not due a minute after the last start")
+	}
+	cfg := h.eng.Snapshot().Config
+	cfg.AutoUpdate = false
+	if err := h.eng.ApplyConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if h.eng.AutoInstallDue() {
+		t.Fatal("due with autoUpdate off")
+	}
+}
+
+func TestAutoUpdateDefaultsOff(t *testing.T) {
+	if config.Defaults().AutoUpdate {
+		t.Fatal("autoUpdate must default to false")
+	}
+}

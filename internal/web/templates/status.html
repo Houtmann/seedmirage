@@ -1,6 +1,7 @@
 {{define "title"}}{{t "status.title"}}{{end}}
 {{define "content"}}
 <div class="grid grid-cols-1 gap-4 min-w-0">
+  {{if .Data.Notice}}<div class="alert alert-warning alert-soft text-sm" role="status">{{.Data.Notice}}</div>{{end}}
   <section class="card bg-base-100 shadow-sm min-w-0">
     <div class="card-body gap-3 p-3 sm:p-6">
       <h1 class="card-title text-base">{{t "status.process"}}</h1>

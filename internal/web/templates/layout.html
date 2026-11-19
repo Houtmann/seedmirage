@@ -42,15 +42,24 @@
 </body>
 </html>{{end}}
 
-{{define "updatebanner"}}<div class="alert alert-info alert-soft flex-wrap text-sm" role="status">
+{{define "updateprogress"}}<div class="alert {{if .Err}}alert-error{{else}}alert-info{{end}} alert-soft text-sm" role="status"{{if .Active}} hx-get="/update/progress?from={{.From}}" hx-trigger="every 1s" hx-swap="outerHTML"{{end}}>
+  <span class="min-w-0 break-words">{{if .Active}}<span class="loading loading-spinner loading-xs"></span> {{end}}{{.Text}}</span>
+</div>{{end}}
+
+{{define "updatebanner"}}{{if and .Progress .Progress.Active}}{{template "updateprogress" .Progress}}{{else}}<div class="alert alert-info alert-soft flex-wrap text-sm" role="status">
   <div class="min-w-0 flex-1">
     <p class="font-medium">{{t "update.available" .Version}}</p>
     {{if .Docker}}<p>{{t "update.docker"}} <code class="break-all">{{.Command}}</code></p>
     {{else}}<p><a class="link" href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{t "update.release"}}</a></p>{{end}}
+    {{if .ReadOnly}}<p class="text-warning">{{t "update.blocked.readonly"}}</p>{{end}}
+    {{if and .Progress .Progress.Err}}<p class="text-error break-words">{{.Progress.Text}}</p>{{end}}
     {{if .Notes}}<details class="mt-1"><summary class="cursor-pointer">{{t "update.notes"}}</summary><pre class="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">{{.Notes}}</pre></details>{{end}}
   </div>
+  {{if or .CanInstall .ReadOnly}}<form hx-post="/update/install" hx-target="#update-banner" hx-swap="innerHTML">
+    <button type="submit" class="btn btn-primary btn-sm"{{if not .CanInstall}} disabled{{end}}>{{t "update.install"}}</button>
+  </form>{{end}}
   <form hx-post="/update/dismiss" hx-target="#update-banner" hx-swap="innerHTML">
     <input type="hidden" name="version" value="{{.Version}}">
     <button type="submit" class="btn btn-ghost btn-xs" aria-label="{{t "update.dismissAria" .Version}}">{{t "update.dismiss"}}</button>
   </form>
-</div>{{end}}
+</div>{{end}}{{end}}

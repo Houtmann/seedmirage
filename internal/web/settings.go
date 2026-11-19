@@ -293,6 +293,7 @@ func settingsSections() []sectionDef {
 		{ID: "advanced", Fields: []fieldDef{
 			intField("maxTrackerFailures", func(c *config.Config) *int { return &c.MaxTrackerFailures }),
 			boolField("updateCheck", func(c *config.Config) *bool { return &c.UpdateCheck }),
+			boolField("autoUpdate", func(c *config.Config) *bool { return &c.AutoUpdate }),
 		}},
 	}
 }

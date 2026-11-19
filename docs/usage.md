@@ -137,6 +137,7 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 |---|---|---|
 | Tolerated tracker failures (`maxTrackerFailures`) | Consecutive failures after which a torrent is dropped. Only applies to torrents started afterwards. | 5 |
 | Check for updates (`updateCheck`) | Look for a newer release once a day (see [Update notice](#update-notice)). Applies at once. | on |
+| Install updates automatically (`autoUpdate`) | Install a new release by itself at the next check (see [Installing an update](#installing-an-update)). Applies at once. | off |
 
 ## Statistics and status
 
@@ -151,7 +152,7 @@ All pages update live over a single event stream; no refresh is needed.
 
 ## Update notice
 
-seedmirage tells you when a newer stable release exists; it never downloads or installs anything. About a minute after
+seedmirage tells you when a newer stable release exists; the check itself downloads nothing (installing is a separate action, see [below](#installing-an-update)). About a minute after
 startup, then every 24 hours, it makes **one** request, the only one that is not a tracker announce:
 
 ```
@@ -169,6 +170,29 @@ version only (a cookie). Outside a container it links to the release page; in a 
 
 To turn it off: untick **Check for updates** in *Settings* (`"updateCheck": false` in `config.json`, applied at once), or start
 with `--no-update-check` (`SEEDMIRAGE_NO_UPDATE_CHECK=1`) for one run.
+
+### Installing an update
+
+With the native binary, the notice has an **Update and restart** button. It:
+
+1. downloads `SHA256SUMS` and the archive for your platform from the release, over HTTPS, from `github.com` and GitHub's
+   asset hosts only (any redirect to another host is refused; 50 MB maximum);
+2. checks the archive's SHA-256 against `SHA256SUMS`. Releases are **not signed**: the trust rests on HTTPS and on those
+   hosts. Nothing is written to disk before this check passes, and any failure leaves the binary and its folder untouched;
+3. writes the new executable next to the current one, swaps it in (the previous one stays as `seedmirage.old`);
+4. stops cleanly (a `stopped` announce for every torrent, state saved, port and instance lock released), then relaunches
+   itself with the same arguments. The page reloads by itself once the new version answers.
+
+The version installed is always the one the release check found. Only one installation runs at a time.
+If the new version does not become ready (the web server never answers), the next launch puts `seedmirage.old` back and
+the *Status* page says so. This guard acts once, so it cannot loop.
+
+The button is not offered (and the route is refused) in a Docker container (use `docker compose pull`), for development
+builds, and when the folder holding the binary is not writable (system-wide install): the notice then explains it and
+links to the release.
+
+**Install updates automatically** (`autoUpdate`, off by default) does the same at the next daily check, unless a torrent
+was started in the last minute (it then waits for the following check).
 
 ## Clean shutdown
 

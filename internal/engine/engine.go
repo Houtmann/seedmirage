@@ -151,8 +151,11 @@ type Engine struct {
 	cache *SwarmCache
 	load  func(string) (*emulation.Profile, error)
 	relMu sync.Mutex
-	rel   ReleaseChecker // nil : créé à la première vérification
-	upd   UpdateSource   // state of the release check (mu); nil: none
+	rel   ReleaseChecker  // nil : créé à la première vérification
+	upd   UpdateSource    // state of the release check (mu); nil: none
+	inst  UpdateInstaller // installer of new releases (mu); nil: none
+	// lastStarted: last time a torrent was started (mu), for the automatic update.
+	lastStarted time.Time
 
 	clientsDir string // dossier clients/ (liste des profils proposés par l'UI)
 
@@ -892,6 +895,9 @@ func (e *Engine) startSeed(t *torrent.Torrent) error {
 		e.disp.Unregister(h)
 		return err
 	}
+	e.mu.Lock()
+	e.lastStarted = e.clk.Now()
+	e.mu.Unlock()
 	e.publish(events.SeedStarted, t.InfoHash.Hex(), "", t.Name, 0)
 	return nil
 }

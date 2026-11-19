@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
 
+	"seedmirage/internal/clock"
 	"seedmirage/internal/config"
 	"seedmirage/internal/datadir"
 	"seedmirage/internal/engine"
@@ -72,6 +75,38 @@ func uiToken(st config.Startup, tokenPath string) string {
 
 // serveWith is serve with an injectable browser opener (tests never launch a browser).
 func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open opener) int {
+	return serveCore(ctx, st, stderr, open, serveHooks{exec: execNew})
+}
+
+// updateURLEnv points the release check and the installer to a local fake
+// release server (manual tests). Only loopback hosts are accepted.
+const updateURLEnv = "SEEDMIRAGE_UPDATE_URL"
+
+// localUpdateBase validates SEEDMIRAGE_UPDATE_URL: http, loopback host only.
+func localUpdateBase(raw string) (base, host string, ok bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme != "http" || u.User != nil {
+		return "", "", false
+	}
+	switch u.Hostname() {
+	case "127.0.0.1", "localhost", "::1":
+		return strings.TrimRight(u.String(), "/"), u.Host, true
+	}
+	return "", "", false
+}
+
+// serveHooks are the test seams of serveCore.
+type serveHooks struct {
+	// exec replaces the process after an installed update (tests never do).
+	exec execFunc
+	// exe overrides the binary an update replaces ("": the running one).
+	exe string
+	// clock drives the release check (nil: the system clock).
+	clock clock.Clock
+}
+
+// serveCore is serveWith with injectable seams.
+func serveCore(ctx context.Context, st config.Startup, stderr io.Writer, open opener, hk serveHooks) int {
 	logger, err := newLogger(stderr, st)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "seedmirage serve: %v\n", err)
@@ -93,7 +128,21 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 		_, _ = fmt.Fprintf(stderr, "seedmirage serve: %v\n", err)
 		return 1
 	}
-	defer func() { _ = lock.Release() }()
+	releaseLock := sync.OnceFunc(func() { _ = lock.Release() })
+	defer releaseLock()
+	exe, exeErr := hk.exe, error(nil)
+	if exe == "" {
+		exe, exeErr = update.ExecutablePath()
+	}
+	var rec update.Recovery
+	if exeErr == nil {
+		if rec, err = update.Begin(layout.Root, exe); err != nil {
+			logger.Warn("update marker", "err", err)
+		}
+		if rec.RolledBack {
+			logger.Warn("the last update did not start correctly: the previous binary was restored for the next launch")
+		}
+	}
 	cfg, err := config.Load(layout.Config)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "seedmirage serve: %v\n", err)
@@ -109,6 +158,9 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 	}
 	var wg sync.WaitGroup
 	onReady := func(addr string) {
+		if err := update.ClearPending(layout.Root); err != nil {
+			logger.Warn("update marker", "err", err)
+		}
 		if err := lock.Update(instance.Info{PID: os.Getpid(), Listen: addr}); err != nil {
 			logger.Warn("instance lock", "err", err)
 		}
@@ -123,20 +175,55 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 			}
 		}()
 	}
+	// The run context ends on shutdown or when an installed update asks for a restart.
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+	hook := &restartHook{cancel: cancelRun}
 	// Release check: off for this run with --no-update-check, otherwise governed
 	// by the updateCheck setting (applied at once). Stopped with the run context.
-	checkCtx, cancelCheck := context.WithCancel(ctx)
-	defer cancelCheck()
+	var mgr *update.Manager
 	if !st.NoUpdateCheck {
-		chk := update.New(update.Config{
-			Version: version, Logger: logger, Enabled: eng.UpdateCheckEnabled,
+		ucfg := update.Config{
+			Version: version, Logger: logger, Enabled: eng.UpdateCheckEnabled, Clock: hk.clock,
 			OnAvailable: func(r update.Release) { eng.NotifyUpdate(r.Version) },
+		}
+		var src update.Source
+		if raw := os.Getenv(updateURLEnv); raw != "" {
+			if base, host, ok := localUpdateBase(raw); ok {
+				ucfg.URL, ucfg.AllowDev = base+"/latest", true
+				src = update.Source{Base: base + "/download", LocalHost: host}
+			} else {
+				logger.Warn(updateURLEnv + " ignored: only http on 127.0.0.1, localhost or ::1 is accepted")
+			}
+		}
+		var chk *update.Checker
+		ucfg.AfterCheck = func() { // automatic installation at the next check slot
+			if eng.AutoInstallDue() {
+				if err := mgr.Start(); err != nil {
+					logger.Debug("automatic update not started", "err", err)
+				}
+			}
+		}
+		chk = update.New(ucfg)
+		block := ""
+		switch {
+		case update.InDocker():
+			block = update.BlockDocker
+		case !chk.Supported():
+			block = update.BlockDev
+		case exeErr != nil || !update.DirWritable(filepath.Dir(exe)):
+			block = update.BlockReadOnly
+		}
+		mgr = update.NewManager(update.ManagerConfig{
+			Ctx: runCtx, Latest: chk.Latest, Source: src, ExePath: exe, Block: block, Restarter: hook,
+			OnProgress: eng.NotifyUpdateProgress, Logger: logger,
 		})
 		eng.SetUpdates(chk)
+		eng.SetInstaller(mgr)
 		wg.Add(1)
-		go func() { defer wg.Done(); chk.Run(checkCtx) }()
+		go func() { defer wg.Done(); chk.Run(runCtx) }()
 	}
-	srv, err := web.New(st, web.Deps{Logger: logger, TokenPath: layout.UIToken, Version: version, Docker: update.InDocker(), Engine: eng, ConfigPath: layout.Config, OnReady: onReady, Logs: ring})
+	srv, err := web.New(st, web.Deps{Logger: logger, TokenPath: layout.UIToken, Version: version, Docker: update.InDocker(), RolledBack: rec.RolledBack, Engine: eng, ConfigPath: layout.Config, OnReady: onReady, Logs: ring})
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "seedmirage serve: %v\n", err)
 		return exitUsage
@@ -152,8 +239,6 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 
 	// The engine stops (one "stopped" per torrent, 10 s at most) as soon as
 	// shutdown begins, in parallel with the UI's own graceful shutdown.
-	runCtx, cancelRun := context.WithCancel(ctx)
-	defer cancelRun()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -168,8 +253,24 @@ func serveWith(ctx context.Context, st config.Startup, stderr io.Writer, open op
 		code = 1
 	}
 	cancelRun()
-	cancelCheck()
 	wg.Wait()
+	if mgr != nil {
+		mgr.Wait()
+	}
+	if hook.requested() && ctx.Err() == nil {
+		// Same process path as a shutdown is done (engine stopped, listener
+		// closed); free the instance lock too, or the new process would refuse to start.
+		releaseLock()
+		if err := update.MarkPending(layout.Root); err != nil {
+			logger.Warn("update marker", "err", err)
+		}
+		logger.Info("restarting on the new version")
+		if err := hk.exec(exe, restartArgs(os.Args), restartEnv(os.Environ())); err != nil {
+			_ = update.ClearPending(layout.Root)
+			_, _ = fmt.Fprintf(stderr, "seedmirage serve: restart: %v\n", err)
+			return 1
+		}
+	}
 	return code
 }
 

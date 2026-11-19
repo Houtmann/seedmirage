@@ -59,6 +59,9 @@ type Config struct {
 	// UpdateCheck: once a day, ask GitHub whether a newer release exists (the
 	// only request that is not a tracker announce). Applied at once.
 	UpdateCheck bool `json:"updateCheck"`
+	// AutoUpdate: install a newer release by itself at the next check, when no
+	// torrent was started in the last minute (native binary only; default off).
+	AutoUpdate bool `json:"autoUpdate"`
 	// SimulateDownload: a torrent first seen while this is on starts as a
 	// download (left = size) before seeding. Rates in KiB/s.
 	SimulateDownload bool `json:"simulateDownload"`

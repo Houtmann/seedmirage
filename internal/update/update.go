@@ -1,8 +1,10 @@
 // Package update tells whether a newer stable release of seedmirage exists. It
 // is the only outgoing request that does not go to a tracker: one GET on the
 // public GitHub releases API, carrying nothing but a "seedmirage/<version>"
-// User-Agent (plus Accept and If-None-Match). It never downloads or installs
-// anything. The package depends on no other seedmirage package than clock.
+// User-Agent (plus Accept and If-None-Match). Installing a release is a
+// separate, explicit action (Manager): it downloads the archive of the
+// platform from GitHub hosts only and verifies it against SHA256SUMS before
+// writing anything. The package depends on no other seedmirage package than clock.
 package update
 
 import (
@@ -70,7 +72,10 @@ type Config struct {
 	Enabled func() bool
 	// OnAvailable is called when a newer release is found for the first time.
 	OnAvailable func(Release)
-	Logger      *slog.Logger
+	// AfterCheck is called after every successful check (the "next slot" of the
+	// automatic installation).
+	AfterCheck func()
+	Logger     *slog.Logger
 	// AllowDev lets development builds check too (tests).
 	AllowDev bool
 }
@@ -202,7 +207,13 @@ func (c *Checker) CheckNow(ctx context.Context) {
 	if announce != nil && c.cfg.OnAvailable != nil {
 		c.cfg.OnAvailable(*announce)
 	}
+	if c.cfg.AfterCheck != nil {
+		c.cfg.AfterCheck()
+	}
 }
+
+// Latest returns the newest release when it is newer than the running one.
+func (c *Checker) Latest() *Release { return c.State().Latest }
 
 type apiRelease struct {
 	Tag        string    `json:"tag_name"`

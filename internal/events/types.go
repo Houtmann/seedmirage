@@ -23,6 +23,8 @@ const (
 	ConfigInvalid  Type = "config.invalid"
 	// UpdateAvailable: a newer seedmirage release exists (Detail: its version).
 	UpdateAvailable Type = "update.available"
+	// UpdateProgress: step of the installation (Detail: stage, Torrent: unused).
+	UpdateProgress Type = "update.progress"
 )
 
 // Event est un événement du bus. Les champs inutilisés restent à leur valeur nulle.

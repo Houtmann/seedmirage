@@ -156,7 +156,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
-			if ev.Type == events.UpdateAvailable {
+			if ev.Type == events.UpdateAvailable || ev.Type == events.UpdateProgress {
 				html, err := s.updateOOB(lang, r)
 				if err != nil {
 					s.log.Error("render update notice", "err", err)

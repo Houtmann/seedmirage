@@ -57,6 +57,9 @@ type Deps struct {
 	// Docker: the process runs in a container (the update notice then shows the
 	// docker compose command instead of a link to the release).
 	Docker bool
+	// RolledBack: the previous launch after an update never became ready and the
+	// previous binary was restored (shown on the status page).
+	RolledBack bool
 	// Logs feeds the /status page with the recent warn+ records (optional).
 	Logs LogSource
 }

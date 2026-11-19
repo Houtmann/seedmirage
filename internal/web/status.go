@@ -38,6 +38,7 @@ type statusView struct {
 	Update    string
 	LastCheck string
 	UpdateErr string
+	Notice    string      // rollback notice (empty: none)
 	Logs      []statusLog // newest first
 }
 
@@ -59,6 +60,9 @@ func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if ub, ok := s.deps.Engine.(updateBackend); ok && s.deps.Engine != nil {
 		v.Update, v.LastCheck, v.UpdateErr = updateStatus(lang, ub.UpdateState())
+	}
+	if s.deps.RolledBack {
+		v.Notice = i18n.T(lang, "status.rolledBack")
 	}
 	if s.deps.Logs != nil {
 		es := s.deps.Logs.Entries()
