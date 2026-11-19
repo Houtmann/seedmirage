@@ -1,0 +1,17 @@
+{{define "title"}}Tableau de bord{{end}}
+{{define "content"}}
+{{if .Data}}
+<div hx-ext="sse" sse-connect="/events">
+  <div id="dash" sse-swap="state,speed.changed" hx-swap="innerHTML">{{template "dash" .Data}}</div>
+  <div id="toasts" class="toast toast-end z-50" role="status" aria-live="polite" sse-swap="toast" hx-swap="beforeend"></div>
+</div>
+{{else}}
+<section class="card bg-base-100 shadow-sm">
+  <div class="card-body">
+    <h1 class="card-title">Tableau de bord</h1>
+    <p>seedmirage est en cours d'exécution (version {{.Version}}).</p>
+    <p class="text-sm opacity-70">Le moteur n'est pas branché sur l'interface.</p>
+  </div>
+</section>
+{{end}}
+{{end}}

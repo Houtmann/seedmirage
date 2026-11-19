@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "name": "transmission-3.00",
+  "family": "transmission",
+  "version": "3.00",
+  "released": "2026-11-19",
+  "source": "capture",
+  "notes": "Profil déduit par `seedmirage capture` de 23 requête(s) HTTP et 6 paquet(s) UDP ; released est la date de la capture, pas celle de la sortie du client. Déductions peu sûres : http, key.pattern, numwant.completed (voir report.md).",
+  "references": [
+    {
+      "url": "https://github.com/transmission/transmission/releases/tag/3.00",
+      "note": "version du client capturée ; la capture (raw.jsonl) fait foi, le code source reste à citer ligne par ligne"
+    }
+  ],
+  "peerId": {
+    "prefix": "-TR3000-",
+    "suffix": "[0-9a-z]{11}",
+    "checksum": "mod36",
+    "renewal": {
+      "scope": "session"
+    }
+  },
+  "key": {
+    "pattern": "[0-9ac]{8}",
+    "renewal": {
+      "scope": "process"
+    }
+  },
+  "encoding": {
+    "keep": "-._~",
+    "hex": "lower"
+  },
+  "query": [
+    {
+      "name": "info_hash",
+      "value": "{info_hash}"
+    },
+    {
+      "name": "peer_id",
+      "value": "{peer_id}"
+    },
+    {
+      "name": "port",
+      "value": "{port}"
+    },
+    {
+      "name": "uploaded",
+      "value": "{uploaded}"
+    },
+    {
+      "name": "downloaded",
+      "value": "{downloaded}"
+    },
+    {
+      "name": "left",
+      "value": "{left}"
+    },
+    {
+      "name": "numwant",
+      "value": "{numwant}"
+    },
+    {
+      "name": "key",
+      "value": "{key}"
+    },
+    {
+      "name": "compact",
+      "value": "1"
+    },
+    {
+      "name": "supportcrypto",
+      "value": "1"
+    },
+    {
+      "name": "event",
+      "value": "{event}",
+      "omit": [
+        "no-event"
+      ]
+    }
+  ],
+  "headers": [
+    {
+      "name": "User-Agent",
+      "value": "Transmission/3.00"
+    },
+    {
+      "name": "Accept",
+      "value": "*/*"
+    },
+    {
+      "name": "Accept-Encoding",
+      "value": "deflate, gzip, br"
+    }
+  ],
+  "udp": {
+    "urlData": false
+  },
+  "numwant": {
+    "completed": 80,
+    "none": 80,
+    "started": 80,
+    "stopped": 0
+  }
+}

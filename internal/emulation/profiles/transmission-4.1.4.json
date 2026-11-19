@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "name": "transmission-4.1.4",
+  "family": "transmission",
+  "version": "4.1.4",
+  "released": "2026-10-22",
+  "source": "manual",
+  "notes": "Transmission 4.1.4 (tag 4.1.4). La date released est celle du commit tagué, pas forcément celle de la publication. Incertain : les en-têtes Accept et Accept-Encoding sont ajoutés par libcurl, pas par Transmission ; Accept: */* est le défaut de libcurl, et la valeur de Accept-Encoding (CURLOPT_ACCEPT_ENCODING vide) liste les codages compilés dans la libcurl utilisée (ici deflate, gzip : un client HTTP de seedmirage doit donc savoir décoder deflate). L'ordre Host, User-Agent, Accept, Accept-Encoding est celui de libcurl, confirmé par capture. Non reproduit : l'envoi de deux requêtes (IPv4 puis IPv6) quand announce_ip n'est pas utilisée (annoncé par announcer-http.cc, géré par le client réseau), requirecrypto=1 (seulement en chiffrement exigé, non par défaut), corrupt (omis quand 0, toujours 0 ici), event=paused (seed partiel). ipv4/ipv6 : Transmission y met son adresse globale connue ; ici PublicIP, omis si inconnue. ip : seulement si announce_ip est activée (réglage non défaut), non reproduit : le profil ne l'émet jamais (confirmé par capture, voir ci-dessous). uploaded/downloaded : compteurs par tracker cumulés jusqu'au stopped acquitté (announcer.cc), donc croissants dans une session d'annonce. Vérifié par capture le 2026-11-19 : Transmission 4.1.4 réel (image lscr.io/linuxserver/transmission:4.1.4), 30 annonces HTTP et 7 UDP, fixtures dans internal/emulation/testdata/captures/transmission-4.1.4. Corrections issues de la capture : le client n'envoie jamais le paramètre ip (seulement ipv4/ipv6, retiré du profil) ; ses annonces UDP ne portent pas l'option BEP 41 (udp.urlData = false) et envoient num_want = 0 pour stopped ; l'adresse annoncée dans ipv4 est l'adresse publique détectée par le client. Seul écart connu : Accept-Encoding, qui vaut deflate, gzip, br, zstd avec la libcurl de l'image Alpine ; le profil garde deflate, gzip car le client HTTP de seedmirage ne décode ni br ni zstd.",
+  "references": [
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-http.cc#L184-L214", "note": "ordre et valeurs fixes de la query : info_hash, peer_id, port, uploaded, downloaded, left, numwant, key ({key:08X} : hexadécimal majuscule sur 8 chiffres), compact=1, supportcrypto=1"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-http.cc#L216-L250", "note": "suite : requirecrypto (si chiffrement exigé), corrupt (si non nul), event (si non vide), trackerid (non encodé), ipv4 puis ipv6 (encodés)"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-http.cc#L253-L256", "note": "&ip=<announce_ip> ajouté à la fin de l'URL (lignes 300-305) si announce_ip est utilisée"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-http.cc#L189-L190", "note": "info_hash encodé par tr_urlPercentEncode"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-http.cc#L82-L85", "note": "event : \"paused\" pour un seed partiel (hors stopped), sinon le nom de l'événement"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer-common.h#L40-L56", "note": "noms d'événement completed / started / stopped ; chaîne vide pour une annonce régulière (le paramètre event est alors omis)"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web-utils.h#L59-L85", "note": "tr_urlPercentEncode : non encodés [0-9A-Za-z] et -_.~ ; tout le reste en %XX hexadécimal majuscule (\"%{:02X}\")"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/session.cc#L185-L213", "note": "tr_peerIdInit : PEERID_PREFIX + 11 caractères tirés de 0-9a-z + 1 caractère de somme : somme des indices des 11 caractères + indice du dernier = 0 modulo 36 ; total 20 octets"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/torrent.h#L1391", "note": "peer_id_ = tr_peerIdInit() : un peer_id par objet tr_torrent (par torrent, pour le processus)"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/torrent.h#L1406", "note": "announce_key_ = tr_rand_obj<uint32_t>() : une key de 32 bits aléatoires par torrent, pour le processus"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer.cc#L925-L946", "note": "construction de la requête : peer_id du torrent, key du torrent, numwant = 0 si stopped sinon Numwant"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/announcer.cc#L57", "note": "Numwant = 80"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/CMakeLists.txt#L95-L99", "note": "version 4.1.4, pas de bêta ni de dev"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/CMakeLists.txt#L138-L165", "note": "préfixe de peer_id : -TR + base62(major) + base62(minor) + base62(patch) + 0 (stable) + - soit -TR4140-"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/session.cc#L321-L324", "note": "User-Agent = TR_NAME \"/\" SHORT_VERSION_STRING soit Transmission/4.1.4"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web.cc#L578", "note": "CURLOPT_ACCEPT_ENCODING = \"\" : libcurl envoie Accept-Encoding avec tous les codages compilés (valeur dépendant de la libcurl : incertain)"},
+    {"url": "https://github.com/transmission/transmission/blob/4.1.4/libtransmission/web.cc#L621", "note": "CURLOPT_USERAGENT avec l'agent ci-dessus ; aucun autre en-tête posé par Transmission pour les annonces"}
+  ],
+  "peerId": {
+    "prefix": "-TR4140-",
+    "suffix": "[0-9a-z]{11}",
+    "checksum": "mod36",
+    "renewal": {"scope": "torrent"}
+  },
+  "key": {
+    "pattern": "[0-9A-F]{8}",
+    "renewal": {"scope": "torrent"}
+  },
+  "encoding": {"keep": "-_.~", "hex": "upper"},
+  "query": [
+    {"name": "info_hash", "value": "{info_hash}"},
+    {"name": "peer_id", "value": "{peer_id}"},
+    {"name": "port", "value": "{port}"},
+    {"name": "uploaded", "value": "{uploaded}"},
+    {"name": "downloaded", "value": "{downloaded}"},
+    {"name": "left", "value": "{left}"},
+    {"name": "numwant", "value": "{numwant}"},
+    {"name": "key", "value": "{key}"},
+    {"name": "compact", "value": "1"},
+    {"name": "supportcrypto", "value": "1"},
+    {"name": "event", "value": "{event}", "omit": ["no-event"]},
+    {"name": "trackerid", "value": "{tracker_id:raw}", "omit": ["no-tracker-id"]},
+    {"name": "ipv4", "value": "{ipv4}", "omit": ["no-ipv4"]},
+    {"name": "ipv6", "value": "{ipv6}", "omit": ["no-ipv6"]}
+  ],
+  "headers": [
+    {"name": "User-Agent", "value": "Transmission/4.1.4"},
+    {"name": "Accept", "value": "*/*"},
+    {"name": "Accept-Encoding", "value": "deflate, gzip"}
+  ],
+  "udp": {"urlData": false},
+  "numwant": {"none": 80, "started": 80, "completed": 80, "stopped": 0}
+}

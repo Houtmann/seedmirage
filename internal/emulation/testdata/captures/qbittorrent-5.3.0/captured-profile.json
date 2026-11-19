@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "name": "qbittorrent-5.3.0",
+  "family": "qbittorrent",
+  "version": "5.3.0",
+  "released": "2026-11-19",
+  "source": "capture",
+  "notes": "Profil déduit par `seedmirage capture` de 24 requête(s) HTTP et 8 paquet(s) UDP ; released est la date de la capture, pas celle de la sortie du client. Déductions peu sûres : numwant.completed (voir report.md).",
+  "references": [
+    {
+      "url": "https://github.com/qbittorrent/qBittorrent/releases/tag/release-5.3.0",
+      "note": "version du client capturée ; la capture (raw.jsonl) fait foi, le code source reste à citer ligne par ligne"
+    }
+  ],
+  "peerId": {
+    "prefix": "-qB5300-",
+    "suffix": "[!(-*\\-.0-9A-Za-z~]{12}",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "key": {
+    "pattern": "[0-9A-F]{8}",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "encoding": {
+    "keep": "!()*-._~",
+    "hex": "lower"
+  },
+  "query": [
+    {
+      "name": "info_hash",
+      "value": "{info_hash}"
+    },
+    {
+      "name": "peer_id",
+      "value": "{peer_id}"
+    },
+    {
+      "name": "port",
+      "value": "{port}"
+    },
+    {
+      "name": "uploaded",
+      "value": "{uploaded}"
+    },
+    {
+      "name": "downloaded",
+      "value": "{downloaded}"
+    },
+    {
+      "name": "left",
+      "value": "{left}"
+    },
+    {
+      "name": "corrupt",
+      "value": "0"
+    },
+    {
+      "name": "key",
+      "value": "{key}"
+    },
+    {
+      "name": "event",
+      "value": "{event}",
+      "omit": [
+        "no-event"
+      ]
+    },
+    {
+      "name": "numwant",
+      "value": "{numwant}"
+    },
+    {
+      "name": "compact",
+      "value": "1"
+    },
+    {
+      "name": "no_peer_id",
+      "value": "1"
+    },
+    {
+      "name": "supportcrypto",
+      "value": "1"
+    },
+    {
+      "name": "redundant",
+      "value": "0"
+    }
+  ],
+  "headers": [
+    {
+      "name": "User-Agent",
+      "value": "qBittorrent/5.3.0"
+    },
+    {
+      "name": "Accept-Encoding",
+      "value": "gzip"
+    },
+    {
+      "name": "Connection",
+      "value": "close"
+    }
+  ],
+  "numwant": {
+    "completed": 200,
+    "none": 200,
+    "started": 200,
+    "stopped": 0
+  }
+}

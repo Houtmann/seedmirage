@@ -1,0 +1,29 @@
+{{define "title"}}État{{end}}
+{{define "content"}}
+<div class="grid grid-cols-1 gap-4 min-w-0">
+  <section class="card bg-base-100 shadow-sm min-w-0">
+    <div class="card-body gap-3 p-3 sm:p-6">
+      <h1 class="card-title text-base">État du processus</h1>
+      <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <div><dt class="opacity-70">Version</dt><dd>{{.Data.Version}}</dd></div>
+        <div><dt class="opacity-70">En marche depuis</dt><dd>{{.Data.Uptime}}</dd></div>
+        <div class="min-w-0"><dt class="opacity-70">Dossier de données</dt><dd class="break-all">{{.Data.DataDir}}</dd></div>
+        <div><dt class="opacity-70">Profil actif</dt><dd>{{if .Data.Profile}}{{.Data.Profile}}{{else}}—{{end}}</dd></div>
+        <div><dt class="opacity-70">Goroutines</dt><dd>{{.Data.Goroutines}}</dd></div>
+        <div><dt class="opacity-70">Mémoire (utilisée / réservée)</dt><dd>{{.Data.MemAlloc}} / {{.Data.MemSys}}</dd></div>
+        <div><dt class="opacity-70">Métriques Prometheus</dt><dd>{{if .Data.Metrics}}<a class="link" href="/metrics">/metrics</a>{{else}}désactivées (<code>--metrics</code>){{end}}</dd></div>
+      </dl>
+    </div>
+  </section>
+  <section class="card bg-base-100 shadow-sm min-w-0">
+    <div class="card-body gap-3 p-3 sm:p-6">
+      <h2 class="card-title text-base">Derniers avertissements et erreurs</h2>
+      {{if .Data.Logs}}
+      <ul class="flex flex-col gap-2 text-sm">
+        {{range .Data.Logs}}<li class="break-words"><span class="opacity-70">{{.Time}}</span> <span class="badge badge-sm {{if eq .Level "ERROR"}}badge-error{{else}}badge-warning{{end}}">{{.Level}}</span> {{.Message}}{{if .Attrs}} <code class="text-xs opacity-80 break-all">{{.Attrs}}</code>{{end}}</li>{{end}}
+      </ul>
+      {{else}}<p class="text-sm opacity-70">Rien à signaler depuis le démarrage.</p>{{end}}
+    </div>
+  </section>
+</div>
+{{end}}

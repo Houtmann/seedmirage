@@ -1,0 +1,7 @@
+query: info_hash=%00%20%7E%80%FFaZ5-%5F%2E%7E%21%2A%28%29%27%2B%25%26&peer_id=-lt101C-%9D%BF%FBf%A4%81%2F%87%C80%3E%07&compact=1&key=316accb8&port=51413&uploaded=4200000&downloaded=0&left=0&event=stopped
+header: User-Agent: rtorrent/0.16.28
+header: Accept: */*
+header: Accept-Encoding: deflate, gzip
+peer_id_hex: 2d6c74313031432d9dbffb66a4812f87c8303e07
+key: 316accb8
+numwant: -1

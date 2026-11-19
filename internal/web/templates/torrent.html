@@ -1,0 +1,99 @@
+{{define "title"}}{{.Data.Name}}{{end}}
+{{define "content"}}
+<p class="mb-2 text-sm"><a class="link" href="/torrents">&larr; Torrents</a></p>
+<section class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body gap-3 p-3 sm:p-6">
+    <h1 class="card-title break-all">{{.Data.Name}} <span class="badge badge-sm">{{.Data.Status}}</span>{{if .Data.Downloading}} <span class="badge badge-info badge-sm">téléchargement</span>{{end}}</h1>
+    <div id="toasts" class="toast toast-end z-50" role="status" aria-live="polite"></div>
+    {{if .Data.Manage}}
+    <div class="flex flex-wrap gap-2">
+      {{if .Data.Archived}}
+      <button type="button" class="btn btn-sm" hx-post="/torrents/{{.Data.Hash}}/restore" hx-swap="none">Restaurer</button>
+      <button type="button" class="btn btn-sm btn-error btn-outline" hx-post="/torrents/{{.Data.Hash}}/delete" hx-swap="none" hx-confirm="Supprimer définitivement ce torrent archivé ? Le fichier .torrent sera effacé.">Supprimer</button>
+      {{else}}
+      <button type="button" class="btn btn-sm" hx-post="/torrents/{{.Data.Hash}}/archive" hx-swap="none">Archiver</button>
+      {{end}}
+    </div>
+    {{end}}
+    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs opacity-70">info_hash</dt><dd class="font-mono text-sm break-all">{{.Data.Hash}}</dd></div>
+      <div><dt class="text-xs opacity-70">Taille</dt><dd class="font-medium">{{.Data.Size}}</dd></div>
+      <div><dt class="text-xs opacity-70">Privé</dt><dd class="font-medium">{{if .Data.Private}}oui{{else}}non{{end}}</dd></div>
+      {{if .Data.Active}}
+      <div><dt class="text-xs opacity-70">Vitesse</dt><dd class="font-medium">{{.Data.Speed}}</dd></div>
+      <div><dt class="text-xs opacity-70">Uploadé (session)</dt><dd class="font-medium">{{.Data.Session}}</dd></div>
+      {{end}}
+      <div><dt class="text-xs opacity-70">Uploadé (total)</dt><dd class="font-medium">{{.Data.Total}}</dd></div>
+      <div><dt class="text-xs opacity-70">Ratio</dt><dd class="font-medium">{{.Data.Ratio}}</dd></div>
+      <div><dt class="text-xs opacity-70">Téléchargé (total)</dt><dd class="font-medium">{{.Data.Downloaded}}</dd></div>
+      {{if .Data.Downloading}}<div><dt class="text-xs opacity-70">Progression</dt><dd class="font-medium">{{.Data.Progress}}</dd></div>{{end}}
+      {{if .Data.Active}}
+      <div><dt class="text-xs opacity-70">Essaim (S / L)</dt><dd class="font-medium">{{if .Data.Announced}}{{.Data.Seeders}} / {{.Data.Leechers}}{{else}}—{{end}}</dd></div>
+      <div><dt class="text-xs opacity-70">Tracker courant</dt><dd class="font-medium break-all">{{if .Data.Tracker}}{{.Data.Tracker}}{{else}}—{{end}}</dd></div>
+      <div><dt class="text-xs opacity-70">Prochaine annonce</dt><dd class="font-medium">{{if .Data.NextUnix}}<time data-next="{{.Data.NextUnix}}">{{.Data.NextText}}</time>{{else}}en cours{{end}}</dd></div>
+      {{end}}
+      <div><dt class="text-xs opacity-70">Première vue</dt><dd class="font-medium">{{.Data.FirstSeen}}</dd></div>
+      <div><dt class="text-xs opacity-70">Dernière vue</dt><dd class="font-medium">{{.Data.LastSeen}}</dd></div>
+      {{if .Data.Archived}}
+      <div><dt class="text-xs opacity-70">Raison de l'archivage</dt><dd class="font-medium">{{.Data.Reason}}</dd></div>
+      <div><dt class="text-xs opacity-70">Archivé le</dt><dd class="font-medium">{{.Data.ArchivedAt}}</dd></div>
+      {{end}}
+    </dl>
+    {{if .Data.LastError}}<div class="alert alert-error text-sm break-words" role="alert"><span>Dernière erreur d'annonce : {{.Data.LastError}}</span></div>{{end}}
+  </div>
+</section>
+
+{{if .Data.Tiers}}
+<section class="card bg-base-100 shadow-sm mb-4">
+  <div class="card-body gap-3 p-3 sm:p-6">
+    <h2 class="card-title text-base">Trackers</h2>
+    {{range $i, $tier := .Data.Tiers}}
+    <div>
+      <h3 class="text-sm font-medium mb-1">Tier {{$i}}</h3>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead><tr><th>URL</th><th>Dernier succès</th><th>Dernier échec</th></tr></thead>
+          <tbody>
+            {{range $tier}}
+            <tr>
+              <td class="break-all">{{.URL}}</td>
+              <td class="whitespace-nowrap">{{.LastSuccess}}</td>
+              <td>{{.LastFailure}}{{if .LastError}}<div class="text-xs text-error break-words">{{.LastError}}</div>{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</section>
+{{end}}
+
+<section class="card bg-base-100 shadow-sm">
+  <div class="card-body gap-3 p-3 sm:p-6">
+    <h2 class="card-title text-base">Dernières annonces</h2>
+    {{if .Data.Recent}}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead><tr><th>Heure</th><th>Événement</th><th>Tracker</th><th class="text-right">S / L</th><th class="text-right">Intervalle</th><th>Résultat</th></tr></thead>
+        <tbody>
+          {{range .Data.Recent}}
+          <tr>
+            <td class="whitespace-nowrap">{{.Time}}</td>
+            <td>{{.Event}}</td>
+            <td class="whitespace-nowrap">{{if .Tracker}}{{.Tracker}}{{else}}—{{end}}</td>
+            <td class="text-right whitespace-nowrap">{{.Swarm}}</td>
+            <td class="text-right whitespace-nowrap">{{.Interval}}</td>
+            <td class="break-words{{if not .OK}} text-error{{end}}">{{.Result}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="text-sm opacity-70">Aucune annonce enregistrée depuis le démarrage de l'application.</p>
+    {{end}}
+  </div>
+</section>
+{{end}}

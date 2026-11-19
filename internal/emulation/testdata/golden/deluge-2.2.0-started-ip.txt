@@ -1,0 +1,7 @@
+query: info_hash=%00%20~%80%ffaZ5-_.~!*()%27%2b%25%26&peer_id=-DE220s-gNweTQd96IA3&port=6881&uploaded=0&downloaded=0&left=12345&corrupt=0&key=27260E2B&event=started&numwant=200&compact=1&no_peer_id=1&supportcrypto=1&redundant=0&trackerid=tid%3a1%20x&ip=203.0.113.7&ipv4=203.0.113.7
+header: User-Agent: Deluge/2.2.0 libtorrent/2.0.15.0
+header: Accept-Encoding: gzip
+header: Connection: close
+peer_id_hex: 2d4445323230732d674e77655451643936494133
+key: 27260E2B
+numwant: 200

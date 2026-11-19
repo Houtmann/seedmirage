@@ -1,0 +1,61 @@
+{{define "title"}}Réglages{{end}}
+{{define "content"}}
+<div hx-ext="sse" sse-connect="/events">
+  <div id="settings-form" hx-get="/settings/form" hx-trigger="sse:config.changed" hx-swap="innerHTML">{{template "settingsform" .Data}}</div>
+  <div id="toasts" class="toast toast-end z-50" role="status" aria-live="polite" sse-swap="toast" hx-swap="beforeend"></div>
+</div>
+{{end}}
+{{define "settingsform"}}
+<form method="post" action="/settings" hx-post="/settings" hx-target="#settings-form" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]" class="flex flex-col gap-4">
+  <h1 class="text-xl font-semibold">Réglages</h1>
+  {{if .Error}}<div class="alert alert-error" role="alert">{{.Error}}</div>{{end}}
+  {{range .Sections}}
+  <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-{{.ID}}">
+    <div class="card-body gap-3">
+      <h2 class="card-title" id="sec-{{.ID}}">{{.Title}}</h2>
+      {{if .Intro}}<p class="text-sm opacity-70">{{.Intro}}</p>{{end}}
+      <div class="grid gap-4 sm:grid-cols-2">
+        {{range .Fields}}
+        <div class="flex flex-col gap-1{{if or (eq .Kind "hourly") (eq .Kind "textarea")}} sm:col-span-2{{end}}">
+          {{if eq .Kind "checkbox"}}
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-sm" id="f-{{.Name}}" name="{{.Name}}" value="on"{{if .Checked}} checked{{end}} aria-describedby="h-{{.Name}}">
+            <span class="font-medium">{{.Label}}</span>
+          </label>
+          {{else}}
+          <label class="font-medium"{{if ne .Kind "hourly"}} for="f-{{.Name}}"{{end}}>{{.Label}}</label>
+          {{if eq .Kind "hourly"}}
+          <div class="flex flex-wrap gap-2" role="group" aria-label="Préréglages du planning">
+            {{range .Presets}}<button type="button" class="btn btn-xs btn-outline" data-hourly-preset="{{.Values}}">{{.Label}}</button>{{end}}
+          </div>
+          <div class="grid grid-cols-4 gap-x-3 gap-y-2 sm:grid-cols-6 lg:grid-cols-12" data-hourly>
+            {{$name := .Name}}{{range .Hours}}{{$h := .}}
+            <label class="flex flex-col items-center gap-0.5 text-xs">
+              <span class="opacity-70">{{$h.Label}}</span>
+              <input type="range" class="range range-xs w-full" name="{{$name}}" min="0" max="2" step="0.05" value="{{$h.Value}}" aria-label="Coefficient à {{$h.Label}}" data-hour>
+              <output class="tabular-nums">{{$h.Value}}</output>
+            </label>
+            {{end}}
+          </div>
+          {{else if eq .Kind "textarea"}}
+          <textarea class="textarea textarea-sm w-full font-mono{{if .Error}} textarea-error{{end}}" id="f-{{.Name}}" name="{{.Name}}" rows="3" spellcheck="false" aria-describedby="h-{{.Name}}"{{if .Error}} aria-invalid="true"{{end}}>{{.Value}}</textarea>
+          {{else if eq .Kind "select"}}
+          <select class="select select-sm w-full{{if .Error}} select-error{{end}}" id="f-{{.Name}}" name="{{.Name}}" aria-describedby="h-{{.Name}}"{{if .Error}} aria-invalid="true"{{end}}>
+            {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          {{else}}
+          <input class="input input-sm w-full{{if .Error}} input-error{{end}}" id="f-{{.Name}}" name="{{.Name}}" value="{{.Value}}" aria-describedby="h-{{.Name}}"{{if .Error}} aria-invalid="true"{{end}}
+            {{if eq .Kind "number"}}type="number" step="{{.Step}}" inputmode="decimal"{{else}}type="text" autocomplete="off"{{end}}>
+          {{end}}
+          {{end}}
+          {{if .Error}}<p class="text-sm text-error" role="alert">{{.Error}}</p>{{end}}
+          <p class="text-xs opacity-70" id="h-{{.Name}}">{{.Help}}</p>
+        </div>
+        {{end}}
+      </div>
+    </div>
+  </section>
+  {{end}}
+  <div><button type="submit" class="btn btn-primary">Enregistrer et appliquer</button></div>
+</form>
+{{end}}

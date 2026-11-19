@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "name": "deluge-2.2.0",
+  "family": "deluge",
+  "version": "2.2.0",
+  "released": "2025-04-28",
+  "source": "manual",
+  "notes": "Deluge 2.2.0 (dernière 2.x) avec libtorrent 2.0.15 : la query et les en-têtes viennent entièrement de libtorrent, Deluge n'y ajoute que le préfixe de peer_id (-DE220s-) et le User-Agent. La date released est celle du commit tagué deluge-2.2.0 (CHANGELOG : 2025-04-28). Incertain : le User-Agent « Deluge/2.2.0 libtorrent/<v> » contient lt.__version__, qui dépend du libtorrent installé avec Deluge (Deluge exige >= 1.2.0.0 et accepte 1.2.x et 2.0.x) ; ce profil suppose 2.0.15.0, la dernière 2.0.x ; avec libtorrent 1.2.x la query est la même (voir qbittorrent-4.6.7) mais la version du User-Agent change. Deluge ne modifie ni num_want, ni announce_ip, ni le mode anonyme (par défaut désactivé), ni report_redundant_bytes. Chiffrement par défaut enc_in_policy = 1 (enabled), d'où supportcrypto=1. Non reproduit : l'annonce par adresse d'écoute locale de libtorrent. ipv4/ipv6 : libtorrent y met l'adresse d'écoute locale, pour les seuls torrents privés ; ici PublicIP (approximation). ip : envoyé seulement si announce_ip est renseignée (aucun réglage Deluge), ici PublicIP. corrupt=0 et redundant=0 : un seed simulé ne reçoit aucune donnée. Vérifié par capture le 2026-11-19 : Deluge 2.2.0 réel (image lscr.io/linuxserver/deluge:2.2.0), 24 annonces HTTP et 7 UDP, fixtures dans internal/emulation/testdata/captures/deluge-2.2.0 : seul écart, la version de libtorrent du User-Agent (2.0.13.0 dans l'image, 2.0.15.0 supposée ici : elle dépend de l'installation) ; les en-têtes libcurl (Accept, Accept-Encoding) sont ceux de libtorrent lui-même (confirmé) ; annonces UDP avec option BEP 41.",
+  "references": [
+    {"url": "https://github.com/deluge-torrent/deluge/blob/deluge-2.2.0/deluge/core/core.py#L114-L121", "note": "user_agent = Deluge/<DELUGE_VER> libtorrent/<LT_VERSION> ; peer_fingerprint = _create_peer_id(DELUGE_VER) ; passés à la session libtorrent"},
+    {"url": "https://github.com/deluge-torrent/deluge/blob/deluge-2.2.0/deluge/core/core.py#L247-L286", "note": "_create_peer_id : generate_fingerprint('DE', 2, 2, 0, 0) soit -DE2200- puis le 6e caractère remplacé par 's' (version stable) : -DE220s-"},
+    {"url": "https://github.com/deluge-torrent/deluge/blob/deluge-2.2.0/deluge/_libtorrent.py#L30-L31", "note": "LT_VERSION = lt.__version__ ; libtorrent >= 1.2.0.0 accepté"},
+    {"url": "https://github.com/deluge-torrent/deluge/blob/deluge-2.2.0/deluge/common.py#L94-L100", "note": "DELUGE_VER = version de la distribution (tag deluge-2.2.0 : 2.2.0)"},
+    {"url": "https://github.com/deluge-torrent/deluge/blob/deluge-2.2.0/deluge/core/preferencesmanager.py#L64-L65", "note": "enc_in_policy = enc_out_policy = 1 par défaut (libtorrent : enabled), d'où supportcrypto=1"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/include/libtorrent/version.hpp#L48", "note": "LIBTORRENT_VERSION \"2.0.15.0\" ; le binding Python expose lt.__version__ = version() (bindings/python/src/version.cpp L13)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/http_tracker_connection.cpp#L123-L154", "note": "ordre et valeurs fixes de la query : info_hash, peer_id, port, uploaded, downloaded, left, corrupt, key (%08X, majuscules), event, numwant, compact=1, no_peer_id=1 ; noms d'événement completed/started/stopped"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/http_tracker_connection.cpp#L156-L170", "note": "suite de la query : supportcrypto=1 (in_enc_policy != disabled et announce_crypto_support), redundant=<n> (report_redundant_bytes), trackerid (échappé)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/http_tracker_connection.cpp#L188-L215", "note": "ip (announce_ip, hors mode anonyme) puis ipv4 puis ipv6 : en dernier"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/http_tracker_connection.cpp#L245-L249", "note": "User-Agent = réglage user_agent (hors mode anonyme)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/http_connection.cpp#L206-L228", "note": "en-têtes dans l'ordre : Host, User-Agent, Accept-Encoding: gzip, Connection: close (Accept: */* est commenté)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/escape_string.cpp#L124-L137", "note": "table des octets non encodés ; escape_string saute les 11 premiers (%+;?:@=&,$/) : restent -_!.~*() et les alphanumériques"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/escape_string.cpp#L140-L169", "note": "encodage octet par octet en %xx, chiffres pris dans hex_chars"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/hex.cpp#L77", "note": "hex_chars = 0123456789abcdef : hexadécimal en minuscules"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/generate_peer_id.cpp#L42-L55", "note": "peer_id = peer_fingerprint (8 octets) + url_random sur les 12 octets restants"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/string_util.cpp#L116-L126", "note": "alphabet d'url_random : 0-9A-Za-z et -_.!~*() (l'apostrophe est exclue), tirage uniforme"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L250", "note": "m_peer_id = generate_peer_id(...) à la construction du torrent : un peer_id par torrent, pour la vie de l'objet torrent"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L5226-L5238", "note": "tracker_key() : 32 bits d'un SHA-1 de (adresse du torrent, storage, adresse de la session) : stable par torrent pour le processus, 32 bits sans structure"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3166-L3190", "note": "ipv4/ipv6 : hors mode anonyme et pour un torrent privé seulement, adresses des sockets d'écoute non locales"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/torrent.cpp#L3193-L3194", "note": "numwant = 0 pour stopped, sinon le réglage num_want"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v2.0.15/src/settings_pack.cpp#L273", "note": "num_want = 200 par défaut"}
+  ],
+  "peerId": {
+    "prefix": "-DE220s-",
+    "suffix": "[0-9A-Za-z_.!~*()-]{12}",
+    "renewal": {"scope": "torrent"}
+  },
+  "key": {
+    "pattern": "[0-9A-F]{8}",
+    "renewal": {"scope": "torrent"}
+  },
+  "encoding": {"keep": "-_.!~*()", "hex": "lower"},
+  "query": [
+    {"name": "info_hash", "value": "{info_hash}"},
+    {"name": "peer_id", "value": "{peer_id}"},
+    {"name": "port", "value": "{port}"},
+    {"name": "uploaded", "value": "{uploaded}"},
+    {"name": "downloaded", "value": "{downloaded}"},
+    {"name": "left", "value": "{left}"},
+    {"name": "corrupt", "value": "0"},
+    {"name": "key", "value": "{key}"},
+    {"name": "event", "value": "{event}", "omit": ["no-event"]},
+    {"name": "numwant", "value": "{numwant}"},
+    {"name": "compact", "value": "1"},
+    {"name": "no_peer_id", "value": "1"},
+    {"name": "supportcrypto", "value": "1"},
+    {"name": "redundant", "value": "0"},
+    {"name": "trackerid", "value": "{tracker_id}", "omit": ["no-tracker-id"]},
+    {"name": "ip", "value": "{ip}", "omit": ["no-ip"]},
+    {"name": "ipv4", "value": "{ipv4}", "omit": ["public-torrent", "no-ipv4"]},
+    {"name": "ipv6", "value": "{ipv6}", "omit": ["public-torrent", "no-ipv6"]}
+  ],
+  "headers": [
+    {"name": "User-Agent", "value": "Deluge/2.2.0 libtorrent/2.0.15.0"},
+    {"name": "Accept-Encoding", "value": "gzip"},
+    {"name": "Connection", "value": "close"}
+  ],
+  "numwant": {"none": 200, "started": 200, "completed": 200, "stopped": 0}
+}

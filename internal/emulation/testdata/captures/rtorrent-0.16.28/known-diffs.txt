@@ -1,0 +1,8 @@
+# Capture faite avec rTorrent 0.16.25 (image crazymax/rtorrent-rutorrent:5.3.18-0.16.25, pas de 0.16.28 publiée) ;
+# le profil embarqué est celui de 0.16.28. Écarts attendus, tous justifiés par le code source :
+# User-Agent rtorrent/<version> et préfixe de peer_id -lt101x- (x = version de libtorrent : 0x19 = 25, 0x1C = 28).
+headers.User-Agent
+query.peer_id
+udp.peer_id
+# Accept-Encoding : valeur de la libcurl de l'image (Alpine : deflate, gzip, br, zstd) ; le profil garde deflate, gzip.
+headers.Accept-Encoding

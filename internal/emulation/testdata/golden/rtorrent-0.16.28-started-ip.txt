@@ -1,0 +1,7 @@
+query: info_hash=%00%20%7E%80%FFaZ5-%5F%2E%7E%21%2A%28%29%27%2B%25%26&peer_id=-lt101C-%FF%CF%CEs%86%B4%2C%01%19%2B%AA2&compact=1&key=27260e2b&trackerid=tid%3A1%20x&port=6881&uploaded=0&downloaded=0&left=12345&event=started
+header: User-Agent: rtorrent/0.16.28
+header: Accept: */*
+header: Accept-Encoding: deflate, gzip
+peer_id_hex: 2d6c74313031432dffcfce7386b42c01192baa32
+key: 27260e2b
+numwant: -1

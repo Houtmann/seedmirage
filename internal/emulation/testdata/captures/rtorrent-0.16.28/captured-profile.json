@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "name": "rtorrent-0.16.25",
+  "family": "rtorrent",
+  "version": "0.16.25",
+  "released": "2026-11-19",
+  "source": "capture",
+  "notes": "Profil déduit par `seedmirage capture` de 18 requête(s) HTTP et 3 paquet(s) UDP ; released est la date de la capture, pas celle de la sortie du client. Déductions peu sûres : http, peerId.suffix (voir report.md).",
+  "references": [
+    {
+      "url": "https://github.com/rakshasa/rtorrent/releases/tag/v0.16.25",
+      "note": "version du client capturée ; la capture (raw.jsonl) fait foi, le code source reste à citer ligne par ligne"
+    }
+  ],
+  "peerId": {
+    "prefix": "-lt1019-",
+    "suffix": "[\\x00-\\xff]{12}",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "key": {
+    "pattern": "[0-24679a-cef]{8}",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "encoding": {
+    "keep": "-",
+    "hex": "upper"
+  },
+  "query": [
+    {
+      "name": "info_hash",
+      "value": "{info_hash}"
+    },
+    {
+      "name": "peer_id",
+      "value": "{peer_id}"
+    },
+    {
+      "name": "compact",
+      "value": "1"
+    },
+    {
+      "name": "key",
+      "value": "{key}"
+    },
+    {
+      "name": "port",
+      "value": "{port}"
+    },
+    {
+      "name": "uploaded",
+      "value": "{uploaded}"
+    },
+    {
+      "name": "downloaded",
+      "value": "{downloaded}"
+    },
+    {
+      "name": "left",
+      "value": "{left}"
+    },
+    {
+      "name": "event",
+      "value": "{event}",
+      "omit": [
+        "no-event"
+      ]
+    }
+  ],
+  "headers": [
+    {
+      "name": "User-Agent",
+      "value": "rtorrent/0.16.25"
+    },
+    {
+      "name": "Accept",
+      "value": "*/*"
+    },
+    {
+      "name": "Accept-Encoding",
+      "value": "deflate, gzip, br, zstd"
+    }
+  ],
+  "udp": {
+    "urlData": false
+  },
+  "numwant": {
+    "completed": -1,
+    "none": -1,
+    "started": -1,
+    "stopped": -1
+  }
+}

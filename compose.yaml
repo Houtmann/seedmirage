@@ -1,0 +1,37 @@
+# seedmirage en local : construit l'image depuis les sources, UI sur http://127.0.0.1:7070 uniquement.
+#
+#   mkdir -p data                      # créé par vous (sinon Docker le crée en root)
+#   docker compose up -d --build
+#   docker compose logs seedmirage | grep token    # lien d'accès
+#   docker compose down                # envoie les `stopped` (délai max 15 s)
+#
+# Variables (fichier .env à côté de ce compose, voir .env.example, ou environnement) :
+#   SEEDMIRAGE_IMAGE      nom de l'image construite (défaut seedmirage:local)
+#   SEEDMIRAGE_VERSION    version injectée dans le binaire (défaut dev)
+#   SEEDMIRAGE_UID/GID    UID/GID de l'hôte pour les fichiers de ./data (défaut 1000:1000 ; `id -u`, `id -g`)
+#   SEEDMIRAGE_UI_TOKEN   fixe le token d'accès (>= 32 caractères : openssl rand -hex 32) ; sinon data/ui-token
+#   TZ                    fuseau horaire (défaut Etc/UTC)
+#   SEEDMIRAGE_LOG_FORMAT json (défaut dans le conteneur) ou text
+name: seedmirage
+services:
+  seedmirage:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSION: ${SEEDMIRAGE_VERSION:-dev}
+    image: ${SEEDMIRAGE_IMAGE:-seedmirage:local}
+    # Créer ./data avec ce même UID/GID avant le premier lancement (sinon Docker le crée en root).
+    user: "${SEEDMIRAGE_UID:-1000}:${SEEDMIRAGE_GID:-1000}"
+    restart: unless-stopped
+    stop_grace_period: 15s
+    ports:
+      - "127.0.0.1:7070:7070"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      SEEDMIRAGE_LOG_FORMAT: ${SEEDMIRAGE_LOG_FORMAT:-json}
+      SEEDMIRAGE_UI_TOKEN: ${SEEDMIRAGE_UI_TOKEN:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

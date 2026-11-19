@@ -1,0 +1,10 @@
+/bin/
+/data/
+/dist/
+*.test
+*.out
+.DS_Store
+.idea/
+deploy/capture/config/
+/capture/
+.env

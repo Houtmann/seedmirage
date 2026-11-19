@@ -1,0 +1,3 @@
+# User-Agent : Deluge/2.2.0 libtorrent/<lt.__version__> ; la version de libtorrent dépend de l installation
+# (image linuxserver/deluge:2.2.0 : 2.0.13.0 ; le profil suppose 2.0.15.0, voir ses notes).
+headers.User-Agent

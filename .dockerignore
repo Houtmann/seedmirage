@@ -1,0 +1,13 @@
+.git
+.claude
+bin
+data
+dist
+capture
+tasks
+docs
+deploy
+*.test
+*.out
+.DS_Store
+.idea

@@ -1,0 +1,24 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - revive
+    - gosec
+    - forbidigo
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^time\.(Now|Sleep)$
+          msg: use clock.Clock (internal/clock); time.Now and time.Sleep are forbidden
+      analyze-types: true
+  exclusions:
+    rules:
+      - path: ^internal/clock/
+        linters:
+          - forbidigo
+formatters:
+  enable:
+    - gofmt

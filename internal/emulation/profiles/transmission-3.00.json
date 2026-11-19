@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "name": "transmission-3.00",
+  "family": "transmission",
+  "version": "3.00",
+  "released": "2020-05-22",
+  "source": "manual",
+  "notes": "Transmission 3.00 (tag 3.00, version stable). La date released est celle de la publication GitHub de la 3.00. Différences notables avec 4.1.4 : key en hexadécimal minuscule sans remplissage (%x) et commune à toutes les annonces du processus ; peer_id renouvelé toutes les 6 heures pour les torrents publics (peer_id_ttl_hours), jamais pour les privés ; pas de paramètre ip ni ipv4 ; ipv6 seulement, encodé avec une autre fonction (hexadécimal majuscule) que l'info_hash (minuscule), d'où l'encodage propre au paramètre ; info_hash encodé avec les octets -_.~ non protégés. Approximations : la key est tirée par tr_rand_int(INT_MAX) puis affichée par %x, donc de 1 à 8 chiffres ; le profil ne produit que 8 chiffres (7/8 des tirages réels) car la longueur d'une key est fixe dans le format ; peer_id : les caractères viennent d'un octet aléatoire modulo 36 (léger biais vers 0-3), tirage uniforme ici. Incertain : les en-têtes Accept et Accept-Encoding sont ajoutés par libcurl, pas par Transmission ; Accept: */* est le défaut de libcurl, et la valeur de Accept-Encoding (CURLOPT_ENCODING vide) liste les codages compilés dans la libcurl utilisée (ici deflate, gzip : un client HTTP de seedmirage doit donc savoir décoder deflate). L'ordre Host, User-Agent, Accept, Accept-Encoding est celui de libcurl, confirmé par capture. Non reproduit : requirecrypto=1 (seulement en chiffrement exigé, non par défaut), corrupt (omis quand 0, toujours 0 ici), event=paused (seed partiel), l'annonce IPv6 d'après tr_globalIPv6 (ici PublicIP, omise si inconnue ou non IPv6). Vérifié par capture le 2026-11-19 : Transmission 3.00 réel (image lscr.io/linuxserver/transmission:version-3.00-r8), 23 annonces HTTP et 6 UDP, fixtures dans internal/emulation/testdata/captures/transmission-3.00 : ordre et valeurs de la query, en-têtes, encodage identiques ; annonces UDP sans option BEP 41 (udp.urlData = false). Seul écart connu : Accept-Encoding (deflate, gzip, br avec la libcurl de l'image ; le profil garde deflate, gzip car br n'est pas décodé par le client HTTP).",
+  "references": [
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer-http.c#L57-L83", "note": "info_hash encodé par tr_http_escape_sha1 ; ordre et valeurs fixes de la query : info_hash, peer_id (%*.*s, non encodé, 20 octets), port, uploaded, downloaded, left, numwant, key (%x : hexadécimal minuscule sans remplissage), compact=1, supportcrypto=1"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer-http.c#L85-L107", "note": "suite : requirecrypto (si chiffrement exigé), corrupt (si non nul), event (si non vide), trackerid (non encodé)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer-http.c#L109-L126", "note": "ipv6 seulement (adresse globale connue), encodé par tr_http_escape ; aucun paramètre ip ni ipv4 dans cette version"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer-http.c#L37-L47", "note": "event : \"paused\" pour un seed partiel (hors stopped), sinon le nom de l'événement"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer.c#L72-L88", "note": "noms d'événement completed / started / stopped ; chaîne vide pour une annonce régulière (le paramètre event est alors omis)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/web.c#L814-L838", "note": "tr_http_escape_sha1 : non encodés [0-9A-Za-z] et . - _ ~ ; tout le reste en %xx hexadécimal minuscule (\"%%%02x\")"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/web.c#L780-L804", "note": "tr_http_escape : non encodés [0-9A-Za-z] et , - . ; tout le reste en %XX hexadécimal majuscule (utilisé pour ipv6)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/session.c#L85-L106", "note": "tr_peerIdInit : PEERID_PREFIX (8 octets) + 11 caractères tirés de 0-9a-z + 1 caractère de somme : somme des indices des 11 caractères + indice du dernier = 0 modulo 36 ; total 20 octets"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/torrent.c#L194-L236", "note": "tr_torrentGetPeerId : un peer_id par tr_torrent ; pour un torrent non privé, renouvelé quand creation + peer_id_ttl_hours * 3600 est passé ; jamais renouvelé pour un torrent privé"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/session.c#L361", "note": "peer_id_ttl_hours = 6 par défaut"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer.c#L215", "note": "a->key = tr_rand_int(INT_MAX) : une key par tr_announcer, donc par processus (commentaire « per-session key » dans announcer-common.h)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/crypto-utils.c#L88-L101", "note": "tr_rand_int(n) = entier aléatoire non signé modulo n : key dans [0, INT_MAX)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer.c#L981-L996", "note": "construction de la requête : peer_id du torrent, key de l'annonceur, numwant = 0 si stopped sinon NUMWANT"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/announcer.c#L58", "note": "NUMWANT = 80"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/CMakeLists.txt#L47-L48", "note": "version 3.00 (TR_USER_AGENT_PREFIX) et préfixe de peer_id -TR3000- ; version stable (peer_id sans X ni Z)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/version.h.in#L3-L7", "note": "PEERID_PREFIX et SHORT_VERSION_STRING issus de CMakeLists.txt"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/web.c#L251", "note": "CURLOPT_ENCODING = \"\" : libcurl envoie Accept-Encoding avec tous les codages compilés (valeur dépendant de la libcurl : incertain)"},
+    {"url": "https://github.com/transmission/transmission/blob/3.00/libtransmission/web.c#L281", "note": "CURLOPT_USERAGENT = TR_NAME \"/\" SHORT_VERSION_STRING soit Transmission/3.00 ; aucun autre en-tête posé par Transmission pour les annonces"}
+  ],
+  "peerId": {
+    "prefix": "-TR3000-",
+    "suffix": "[0-9a-z]{11}",
+    "checksum": "mod36",
+    "renewal": {"scope": "torrent", "ttlHours": 6, "ttlPublicOnly": true}
+  },
+  "key": {
+    "pattern": "[1-7][0-9a-f]{7}",
+    "renewal": {"scope": "process"}
+  },
+  "encoding": {"keep": "-_.~", "hex": "lower"},
+  "query": [
+    {"name": "info_hash", "value": "{info_hash}"},
+    {"name": "peer_id", "value": "{peer_id}"},
+    {"name": "port", "value": "{port}"},
+    {"name": "uploaded", "value": "{uploaded}"},
+    {"name": "downloaded", "value": "{downloaded}"},
+    {"name": "left", "value": "{left}"},
+    {"name": "numwant", "value": "{numwant}"},
+    {"name": "key", "value": "{key}"},
+    {"name": "compact", "value": "1"},
+    {"name": "supportcrypto", "value": "1"},
+    {"name": "event", "value": "{event}", "omit": ["no-event"]},
+    {"name": "trackerid", "value": "{tracker_id:raw}", "omit": ["no-tracker-id"]},
+    {"name": "ipv6", "value": "{ipv6}", "omit": ["no-ipv6"], "encoding": {"keep": "-.,", "hex": "upper"}}
+  ],
+  "headers": [
+    {"name": "User-Agent", "value": "Transmission/3.00"},
+    {"name": "Accept", "value": "*/*"},
+    {"name": "Accept-Encoding", "value": "deflate, gzip"}
+  ],
+  "udp": {"urlData": false},
+  "numwant": {"none": 80, "started": 80, "completed": 80, "stopped": 0}
+}

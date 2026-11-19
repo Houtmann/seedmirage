@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "name": "qbittorrent-4.6.7",
+  "family": "qbittorrent",
+  "version": "4.6.7",
+  "released": "2024-09-16",
+  "source": "manual",
+  "notes": "qBittorrent 4.6.7 (dernière 4.6.x) avec libtorrent 1.2.20 (dernière 1.2.x). La date released est celle du commit tagué release-4.6.7, pas forcément celle de la publication. Les builds 4.6.x liés à libtorrent 2.0.x annoncent de la même façon : le code d'annonce de libtorrent 1.2.20 et 2.0.15 a été comparé, la query (ordre, valeurs fixes, encodage) et les en-têtes sont identiques, seul le style du code diffère. Différences avec qbittorrent-5.3.0 : préfixe -qB4670- et User-Agent, rien d'autre. Non reproduit : l'annonce par adresse d'écoute locale de libtorrent. ipv4/ipv6 : libtorrent y met l'adresse d'écoute locale, pour les seuls torrents privés ; ici PublicIP (approximation). ip : envoyé seulement si l'option announce_ip est renseignée, ce que représente PublicIP. corrupt=0 et redundant=0 : un seed simulé ne reçoit aucune donnée. supportcrypto=1 suppose le chiffrement « activé » (réglage par défaut de qBittorrent, in_enc_policy = pe_enabled). Vérifié par capture le 2026-11-19 : qBittorrent 4.6.7 réel (image lscr.io/linuxserver/qbittorrent:4.6.7-libtorrentv1, libtorrent 1.2.19 d'après le journal de l'image), 26 annonces HTTP et 6 UDP, fixtures dans internal/emulation/testdata/captures/qbittorrent-4.6.7 : aucune différence (query, en-têtes, encodage, UDP avec option BEP 41), ce qui confirme que libtorrent 1.2 annonce comme 2.0.",
+  "references": [
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_tracker_connection.cpp#L114-L146", "note": "ordre et valeurs fixes de la query : info_hash, peer_id, port, uploaded, downloaded, left, corrupt, key (%08X, majuscules), event, numwant, compact=1, no_peer_id=1 ; noms d'événement completed/started/stopped"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_tracker_connection.cpp#L147-L161", "note": "suite de la query : supportcrypto=1 (in_enc_policy != disabled et announce_crypto_support), redundant=<n> (report_redundant_bytes), trackerid (échappé)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_tracker_connection.cpp#L178-L185", "note": "ip = announce_ip, hors mode anonyme"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_tracker_connection.cpp#L188-L209", "note": "ipv4 puis ipv6 : en dernier, valeurs échappées"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_tracker_connection.cpp#L233-L252", "note": "User-Agent = réglage user_agent (hors mode anonyme), passé à http_connection::get avec bottled = true"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/http_connection.cpp#L193-L209", "note": "en-têtes dans l'ordre : Host, User-Agent, Accept-Encoding: gzip (annonce « bottled »), Connection: close ; Accept: */* est commenté"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/escape_string.cpp#L127-L138", "note": "table des octets non encodés ; escape_string saute les 11 premiers (%+;?:@=&,$/) : restent -_!.~*() et les alphanumériques"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/escape_string.cpp#L143-L172", "note": "encodage octet par octet en %xx, chiffres pris dans hex_chars ; escape_string = offset 11"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/hex.cpp#L74", "note": "hex_chars = 0123456789abcdef : hexadécimal en minuscules"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/generate_peer_id.cpp#L42-L54", "note": "peer_id = peer_fingerprint (8 octets) + url_random sur les 12 octets restants"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/string_util.cpp#L112-L122", "note": "alphabet d'url_random : 0-9A-Za-z et -_.!~*() (l'apostrophe est exclue), tirage uniforme"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/fingerprint.cpp#L51-L74", "note": "generate_fingerprint : tiret, 2 lettres, 4 caractères de version (0-9 puis A-Z), tiret"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/torrent.cpp#L195", "note": "m_peer_id(generate_peer_id(settings())) dans le constructeur du torrent : un peer_id par torrent, pour la vie de l'objet torrent"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/torrent.cpp#L4785-L4797", "note": "tracker_key() : 32 bits d'un SHA-1 de (adresse du torrent, storage, adresse de la session) : stable par torrent pour le processus, 32 bits sans structure"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/torrent.cpp#L3004", "note": "req.pid = m_peer_id"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/torrent.cpp#L3046-L3066", "note": "ipv4/ipv6 : hors mode anonyme et pour un torrent privé seulement, adresses des sockets d'écoute non locales"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/torrent.cpp#L3070-L3071", "note": "numwant = 0 pour stopped, sinon le réglage num_want"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/settings_pack.cpp#L197-L200", "note": "report_redundant_bytes = true, announce_crypto_support = true par défaut"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/settings_pack.cpp#L242", "note": "num_want = 200 par défaut (qBittorrent ne le modifie pas : aucune occurrence dans sessionimpl.cpp)"},
+    {"url": "https://github.com/arvidn/libtorrent/blob/v1.2.20/src/settings_pack.cpp#L340", "note": "in_enc_policy = pe_enabled par défaut"},
+    {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/src/base/bittorrent/sessionimpl.cpp#L141-L142", "note": "PEER_ID = qB, USER_AGENT = qBittorrent/ + QBT_VERSION_2 (4.6.7)"},
+    {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/src/base/bittorrent/sessionimpl.cpp#L1518-L1522", "note": "peer_fingerprint = generate_fingerprint(PEER_ID, 4, 6, 7, 0) soit -qB4670- ; user_agent = USER_AGENT"},
+    {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/src/base/bittorrent/sessionimpl.cpp#L1668-L1684", "note": "chiffrement : mode « Enabled » (défaut) = pe_enabled en entrée et en sortie"},
+    {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/src/base/bittorrent/sessionimpl.cpp#L1857", "note": "announce_ip = réglage utilisateur (vide par défaut)"},
+    {"url": "https://github.com/qbittorrent/qBittorrent/blob/release-4.6.7/src/base/version.h.in#L31-L35", "note": "version 4.6.7, QBT_VERSION_BUILD 0, statut vide (stable)"}
+  ],
+  "peerId": {
+    "prefix": "-qB4670-",
+    "suffix": "[0-9A-Za-z_.!~*()-]{12}",
+    "renewal": {"scope": "torrent"}
+  },
+  "key": {
+    "pattern": "[0-9A-F]{8}",
+    "renewal": {"scope": "torrent"}
+  },
+  "encoding": {"keep": "-_.!~*()", "hex": "lower"},
+  "query": [
+    {"name": "info_hash", "value": "{info_hash}"},
+    {"name": "peer_id", "value": "{peer_id}"},
+    {"name": "port", "value": "{port}"},
+    {"name": "uploaded", "value": "{uploaded}"},
+    {"name": "downloaded", "value": "{downloaded}"},
+    {"name": "left", "value": "{left}"},
+    {"name": "corrupt", "value": "0"},
+    {"name": "key", "value": "{key}"},
+    {"name": "event", "value": "{event}", "omit": ["no-event"]},
+    {"name": "numwant", "value": "{numwant}"},
+    {"name": "compact", "value": "1"},
+    {"name": "no_peer_id", "value": "1"},
+    {"name": "supportcrypto", "value": "1"},
+    {"name": "redundant", "value": "0"},
+    {"name": "trackerid", "value": "{tracker_id}", "omit": ["no-tracker-id"]},
+    {"name": "ip", "value": "{ip}", "omit": ["no-ip"]},
+    {"name": "ipv4", "value": "{ipv4}", "omit": ["public-torrent", "no-ipv4"]},
+    {"name": "ipv6", "value": "{ipv6}", "omit": ["public-torrent", "no-ipv6"]}
+  ],
+  "headers": [
+    {"name": "User-Agent", "value": "qBittorrent/4.6.7"},
+    {"name": "Accept-Encoding", "value": "gzip"},
+    {"name": "Connection", "value": "close"}
+  ],
+  "numwant": {"none": 200, "started": 200, "completed": 200, "stopped": 0}
+}

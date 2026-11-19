@@ -1,0 +1,93 @@
+{{define "title"}}Torrents{{end}}
+{{define "content"}}
+<section class="card bg-base-100 shadow-sm">
+  <div class="card-body gap-3 p-3 sm:p-6">
+    <h1 class="card-title">Torrents</h1>
+    <div id="toasts" class="toast toast-end z-50" role="status" aria-live="polite"></div>
+    {{if .Data.Manage}}
+    <form id="upload-form" hx-post="/torrents/upload" hx-encoding="multipart/form-data" hx-target="#upload-result" hx-swap="innerHTML" hx-trigger="change, submit" class="flex flex-wrap items-center gap-2 rounded-box border-2 border-dashed border-base-300 p-3">
+      <label class="text-sm" for="upload-files">Ajouter des .torrent (glisser-déposer ou choisir, 10 Mo et 50 fichiers au plus) :</label>
+      <input id="upload-files" type="file" name="files" multiple accept=".torrent,application/x-bittorrent" class="file-input file-input-sm w-full max-w-md">
+      <button type="submit" class="btn btn-sm btn-primary">Ajouter</button>
+    </form>
+    <div id="upload-result" aria-live="polite"></div>
+    {{end}}
+    <div role="tablist" class="tabs tabs-border flex-wrap">
+      {{range .Data.Tabs}}<a role="tab" href="{{.URL}}" class="tab{{if .Cur}} tab-active{{end}}"{{if .Cur}} aria-current="page"{{end}}>{{.Label}} <span class="badge badge-sm ml-1">{{.Count}}</span></a>{{end}}
+    </div>
+    <form method="get" action="/torrents" class="flex flex-wrap items-center gap-2" role="search">
+      <input type="hidden" name="tab" value="{{.Data.Tab}}">
+      {{if .Data.Sort}}<input type="hidden" name="sort" value="{{.Data.Sort}}"><input type="hidden" name="dir" value="{{.Data.Dir}}">{{end}}
+      <label class="sr-only" for="q">Filtrer par nom</label>
+      <input id="q" type="search" name="q" value="{{.Data.Query}}" placeholder="Filtrer par nom ou info_hash" class="input input-sm input-bordered w-full max-w-xs">
+      <button type="submit" class="btn btn-sm">Filtrer</button>
+      {{if .Data.Query}}<a class="btn btn-sm btn-ghost" href="/torrents?tab={{.Data.Tab}}">Effacer</a>{{end}}
+    </form>
+    {{if .Data.Rows}}
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th><a class="link link-hover" href="{{index .Data.SortURLs "name"}}">Nom</a></th>
+            <th><a class="link link-hover" href="{{index .Data.SortURLs "size"}}">Taille</a></th>
+            {{if .Data.Archived}}
+            <th>Raison</th><th>Date</th>
+            {{else}}
+            <th>Tracker</th><th class="text-right">S / <a class="link link-hover" href="{{index .Data.SortURLs "leechers"}}">L</a></th>
+            {{end}}
+            <th class="text-right"><a class="link link-hover" href="{{index .Data.SortURLs "uploaded"}}">Uploadé (total)</a></th>
+            <th class="text-right">Ratio</th>
+            {{if not .Data.Archived}}<th>État</th>{{end}}
+            {{if .Data.Manage}}<th><span class="sr-only">Actions</span></th>{{end}}
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Rows}}
+          <tr class="hover">
+            <td class="max-w-56 truncate" title="{{.Name}}"><a href="/torrents/{{.Hash}}" class="link link-hover">{{.Name}}</a></td>
+            <td class="whitespace-nowrap">{{.Size}}</td>
+            {{if $.Data.Archived}}
+            <td>{{.Reason}}</td><td class="whitespace-nowrap">{{.Date}}</td>
+            {{else}}
+            <td class="whitespace-nowrap">{{if .Tracker}}{{.Tracker}}{{else}}—{{end}}</td>
+            <td class="text-right whitespace-nowrap">{{.Swarm}}</td>
+            {{end}}
+            <td class="text-right whitespace-nowrap">{{.Total}}</td>
+            <td class="text-right whitespace-nowrap">{{.Ratio}}</td>
+            {{if not $.Data.Archived}}
+            <td>{{.State}}{{if .Progress}} <span class="badge badge-info badge-sm">{{.Progress}}</span>{{end}}{{if .Error}}<div class="text-xs text-error break-words max-w-xs">{{.Error}}</div>{{end}}</td>
+            {{end}}
+            {{if $.Data.Manage}}
+            <td class="whitespace-nowrap">
+              {{if $.Data.Archived}}
+              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/restore" hx-swap="none">Restaurer</button>
+              <button type="button" class="btn btn-xs btn-error btn-outline" hx-post="/torrents/{{.Hash}}/delete" hx-swap="none" hx-confirm="Supprimer définitivement « {{.Name}} » ? Le fichier .torrent sera effacé.">Supprimer</button>
+              {{else}}
+              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/archive" hx-swap="none">Archiver</button>
+              {{end}}
+            </td>
+            {{end}}
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <nav class="flex items-center justify-between gap-2 text-sm" aria-label="Pagination">
+      <span class="opacity-70">{{.Data.Total}} torrent(s) · page {{.Data.Page}} / {{.Data.Pages}}</span>
+      <span class="join">
+        {{if .Data.PrevURL}}<a class="btn btn-sm join-item" href="{{.Data.PrevURL}}" rel="prev">Précédent</a>{{end}}
+        {{if .Data.NextURL}}<a class="btn btn-sm join-item" href="{{.Data.NextURL}}" rel="next">Suivant</a>{{end}}
+      </span>
+    </nav>
+    {{else}}
+    <p class="text-sm opacity-70">Aucun torrent{{if .Data.Query}} ne correspond au filtre{{end}}.</p>
+    {{end}}
+  </div>
+</section>
+{{end}}
+
+{{define "uploadresult"}}<ul class="text-sm space-y-1">
+  {{range .Results}}<li class="{{if .OK}}text-success{{else}}text-error{{end}} break-all">{{if .OK}}<a class="link" href="/torrents/{{.Hash}}">{{.Name}}</a>{{else}}{{.Name}}{{end}} : {{.Message}}</li>
+  {{end}}
+</ul>
+{{if .Added}}<p class="text-sm mt-1"><a class="link" href="/torrents">Actualiser la liste</a></p>{{end}}{{end}}

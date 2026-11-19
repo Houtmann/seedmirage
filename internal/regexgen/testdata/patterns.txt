@@ -1,0 +1,22 @@
+# Motifs de test écrits pour seedmirage. Format : longueur attendue, TAB, motif.
+# `*` : longueur variable (seule la correspondance est vérifiée).
+20	-SM0100-[a-z0-9]{12}
+20	-SM0100-[A-Za-z0-9_~.*-]{12}
+20	-XX1234-[\x01-\xff]{12}
+20	-XY1234-[\x01-\xff]{12}
+20	(?i)-zz0001-[a-f0-9]{12}
+*	-AB0000-(x|y|zz){2}[0-9]{9,10}
+8	[A-Za-z0-9]{8}
+40	[0-9a-f]{40}
+4	[\x01-\xff]{4}
+6	(?:ab|cd|ef){3}
+15	-Q[0-9]{3}-[a-z]{3}[A-Z]{3}[0-9]{3}
+20	(?i)ABCDEF[a-z]{14}
+12	-T9-[\x41-\x5a]{3,3}[a-z]{5,5}
+20	Seed[0-9]{16}
+8	[a-f]{2}-[g-l]{2}-[m-r]{2}
+20	-N0001-([a-z]|[0-9]){13}
+20	-R5-[\x80-\xff]{16}
+20	x{20}
+20	[01]{20}
+20	-P1000-[!-~]{13}

@@ -1,0 +1,7 @@
+query: info_hash=%00%20~%80%FFaZ5-_.~%21%2A%28%29%27%2B%25%26&peer_id=-TR4140-pfxoigo76c8s&port=6881&uploaded=0&downloaded=0&left=12345&numwant=80&key=227260E2&compact=1&supportcrypto=1&event=started&trackerid=tid:1 x&ipv4=203.0.113.7
+header: User-Agent: Transmission/4.1.4
+header: Accept: */*
+header: Accept-Encoding: deflate, gzip
+peer_id_hex: 2d5452343134302d7066786f69676f3736633873
+key: 227260E2
+numwant: 80

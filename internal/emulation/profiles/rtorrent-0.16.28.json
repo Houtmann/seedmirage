@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "name": "rtorrent-0.16.28",
+  "family": "rtorrent",
+  "version": "0.16.28",
+  "released": "2026-11-11",
+  "source": "manual",
+  "notes": "rTorrent 0.16.28 avec libtorrent (rakshasa) 0.16.28, les deux tags du 2026-11-11 (publication GitHub de rTorrent 0.16.28, non prérelease). Particularités : le peer_id est le préfixe -lt101C- (version 0.16.28 écrite en deux octets hexadécimaux, 0x10 puis 0x1C : PEER_NAME de configure.ac) suivi de 12 OCTETS aléatoires quelconques (0x00-0xFF), donc presque toujours encodés en %XX ; le paramètre numwant n'est envoyé que s'il est >= 0 et trackers.numwant vaut -1 par défaut : il est absent de la query (numwant -1 dans le profil : défaut du tracker, aussi -1 en UDP) ; key en hexadécimal minuscule sur 8 chiffres, tirée une fois par torrent puis conservée dans le fichier de session de rTorrent (portée torrent). Les valeurs ip, ipv4 et ipv6 ne sont envoyées que si une adresse locale est configurée (network.bind_address) : par défaut rien n'est envoyé, le profil n'en émet donc aucune, même si PublicIP est connue. Le trackerid est encodé avec la même fonction que le peer_id. Approximations : la key vient de random() % (2^32 - 2) + 1 (random() renvoie 31 bits), le profil produit [0x00000000, 0x7FFFFFFF] sans exclure 0 (probabilité 2^-31) ni 0x80000000 ; le peer_id est tiré par un mt19937 initialisé par random_device, uniforme ici. Incertain : les en-têtes Accept et Accept-Encoding sont ajoutés par libcurl, pas par rTorrent ; Accept: */* est le défaut de libcurl, et la valeur de Accept-Encoding (CURLOPT_ENCODING vide) liste les codages compilés dans la libcurl utilisée (ici deflate, gzip : un client HTTP de seedmirage doit donc savoir décoder deflate). L'ordre Host, User-Agent, Accept, Accept-Encoding est celui de libcurl, confirmé par capture. Non reproduit : les deux requêtes successives (IPv4 puis IPv6) que libtorrent peut envoyer selon la configuration réseau (request_families), la redirection (maximum 5), l'annonce par famille d'adresse (ip=<adresse de l'autre famille>). Vérifié par capture le 2026-11-19 avec rTorrent 0.16.25 (image crazymax/rtorrent-rutorrent:5.3.18-0.16.25 : aucune image 0.16.28 publiée ; 18 annonces HTTP et 3 UDP, fixtures dans internal/emulation/testdata/captures/rtorrent-0.16.28) : query, ordre, encodage et numwant absent identiques ; seuls écarts, justifiés par le code source entre les deux versions : User-Agent (rtorrent/0.16.25) et préfixe de peer_id (-lt1019- = 0x10 0x19, au lieu de 0x1C) ; Accept-Encoding vaut deflate, gzip, br, zstd avec la libcurl de l'image (le profil garde deflate, gzip). Les annonces UDP ne portent pas l'option BEP 41 (udp.urlData = false) et envoient num_want = -1. Version 0.16.28 elle-même non capturée.",
+  "references": [
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/tracker/tracker_http.cc#L270-L281", "note": "request_prefix : url du tracker puis ? ou &, puis info_hash encodé par copy_escape_html_str en premier paramètre"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/tracker/tracker_http.cc#L282-L339", "note": "request_announce_url : ordre de la query : info_hash, peer_id, compact=1, key (%08x), trackerid, ip/ipv4/ipv6 (seulement si une adresse locale est configurée), numwant (si >= 0 et pas stopped), port, uploaded, downloaded, left, event (started, stopped ou completed ; absent pour une annonce régulière)"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/torrent/utils/string_manip.h#L141-L170", "note": "copy_escape_html_str : seuls [A-Za-z0-9] et '-' ne sont pas encodés ; le reste en %XX ; value_to_hex0/1 (L119-L137) : chiffres hexadécimaux en majuscules"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/torrent/torrent.cc#L36-L50", "note": "generate_random : octets uniformes 0x00-0xFF (independent_bits_engine<mt19937, 8 bits>, graine random_device)"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/torrent/torrent.cc#L133-L166", "note": "download_add : local_id = PEER_NAME + generate_random(20 - taille de PEER_NAME) soit 8 octets de préfixe et 12 octets aléatoires, créé une fois par torrent ajouté ; tracker_key transmis à initialize"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/configure.ac#L11", "note": "PEER_NAME = \"-lt101C-\" (version 0.16.28 : 0x10, 0x1C), 8 octets"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/tracker/tracker_list.cc#L125-L140", "note": "paramètres d'annonce : numwant = m_numwant, uploaded/completed ajustés, left"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/tracker/tracker_list.cc#L276-L284", "note": "tracker_info.key = m_key (la key de la liste de trackers, fixée par set_key à l'initialisation du torrent)"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/download/download_wrapper.cc#L65-L81", "note": "initialize : local_id et tracker_key du torrent (m_main->tracker_list()->set_key)"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/net/curl_get.cc#L304", "note": "CURLOPT_ENCODING = \"\" : libcurl envoie Accept-Encoding avec tous les codages compilés (valeur dépendant de la libcurl : incertain)"},
+    {"url": "https://github.com/rakshasa/libtorrent/blob/v0.16.28/src/net/curl_stack.cc#L142-L143", "note": "CURLOPT_USERAGENT = user agent de la pile HTTP ; aucun autre en-tête posé pour les annonces"},
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/main.cc#L472", "note": "http_stack()->set_user_agent(USER_AGENT)"},
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/configure.ac#L69", "note": "USER_AGENT = PACKAGE \"/\" VERSION soit rtorrent/0.16.28"},
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/core/download_factory.cc#L205-L217", "note": "tracker_key : relue du fichier de session (clé rtorrent.key) sinon random() % (UINT32_MAX - 1) + 1 ; une key par torrent, conservée entre les lancements"},
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/core/download_factory.cc#L282", "note": "d.tracker_numwant.set reçoit trackers.numwant"},
+    {"url": "https://github.com/rakshasa/rtorrent/blob/v0.16.28/src/command_tracker.cc#L132", "note": "trackers.numwant = -1 par défaut : aucun paramètre numwant dans l'annonce"}
+  ],
+  "peerId": {
+    "prefix": "-lt101C-",
+    "suffix": "[\\x00-\\xff]{12}",
+    "renewal": {"scope": "torrent"}
+  },
+  "key": {
+    "pattern": "[0-7][0-9a-f]{7}",
+    "renewal": {"scope": "torrent"}
+  },
+  "encoding": {"keep": "-", "hex": "upper"},
+  "query": [
+    {"name": "info_hash", "value": "{info_hash}"},
+    {"name": "peer_id", "value": "{peer_id}"},
+    {"name": "compact", "value": "1"},
+    {"name": "key", "value": "{key}"},
+    {"name": "trackerid", "value": "{tracker_id}", "omit": ["no-tracker-id"]},
+    {"name": "port", "value": "{port}"},
+    {"name": "uploaded", "value": "{uploaded}"},
+    {"name": "downloaded", "value": "{downloaded}"},
+    {"name": "left", "value": "{left}"},
+    {"name": "event", "value": "{event}", "omit": ["no-event"]}
+  ],
+  "headers": [
+    {"name": "User-Agent", "value": "rtorrent/0.16.28"},
+    {"name": "Accept", "value": "*/*"},
+    {"name": "Accept-Encoding", "value": "deflate, gzip"}
+  ],
+  "udp": {"urlData": false},
+  "numwant": {"none": -1, "started": -1, "completed": -1, "stopped": -1}
+}

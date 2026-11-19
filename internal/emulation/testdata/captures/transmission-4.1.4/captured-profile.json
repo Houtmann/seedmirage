@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "name": "transmission-4.1.4",
+  "family": "transmission",
+  "version": "4.1.4",
+  "released": "2026-11-19",
+  "source": "capture",
+  "notes": "Profil déduit par `seedmirage capture` de 30 requête(s) HTTP et 7 paquet(s) UDP ; released est la date de la capture, pas celle de la sortie du client. Déductions peu sûres : http, numwant.completed (voir report.md).",
+  "references": [
+    {
+      "url": "https://github.com/transmission/transmission/releases/tag/4.1.4",
+      "note": "version du client capturée ; la capture (raw.jsonl) fait foi, le code source reste à citer ligne par ligne"
+    }
+  ],
+  "peerId": {
+    "prefix": "-TR4140-",
+    "suffix": "[0-9a-z]{11}",
+    "checksum": "mod36",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "key": {
+    "pattern": "[0-9A-F]{8}",
+    "renewal": {
+      "scope": "torrent"
+    }
+  },
+  "encoding": {
+    "keep": "-._~",
+    "hex": "upper"
+  },
+  "query": [
+    {
+      "name": "info_hash",
+      "value": "{info_hash}"
+    },
+    {
+      "name": "peer_id",
+      "value": "{peer_id}"
+    },
+    {
+      "name": "port",
+      "value": "{port}"
+    },
+    {
+      "name": "uploaded",
+      "value": "{uploaded}"
+    },
+    {
+      "name": "downloaded",
+      "value": "{downloaded}"
+    },
+    {
+      "name": "left",
+      "value": "{left}"
+    },
+    {
+      "name": "numwant",
+      "value": "{numwant}"
+    },
+    {
+      "name": "key",
+      "value": "{key}"
+    },
+    {
+      "name": "compact",
+      "value": "1"
+    },
+    {
+      "name": "supportcrypto",
+      "value": "1"
+    },
+    {
+      "name": "event",
+      "value": "{event}",
+      "omit": [
+        "no-event"
+      ]
+    },
+    {
+      "name": "ipv4",
+      "value": "{ipv4}",
+      "omit": [
+        "no-ipv4"
+      ]
+    }
+  ],
+  "headers": [
+    {
+      "name": "User-Agent",
+      "value": "Transmission/4.1.4"
+    },
+    {
+      "name": "Accept",
+      "value": "*/*"
+    },
+    {
+      "name": "Accept-Encoding",
+      "value": "deflate, gzip, br, zstd"
+    }
+  ],
+  "udp": {
+    "urlData": false
+  },
+  "numwant": {
+    "completed": 80,
+    "none": 80,
+    "started": 80,
+    "stopped": 0
+  }
+}

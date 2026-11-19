@@ -1,0 +1,25 @@
+{{define "title"}}Profil {{.Data.Name}}{{end}}
+{{define "content"}}
+<div class="flex flex-col gap-4">
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="/profiles" class="link link-hover text-sm">← Profils</a>
+    <h1 class="text-xl font-semibold break-all">{{.Data.Name}}</h1>
+    {{if .Data.Active}}<span class="badge badge-success badge-sm">actif</span>{{end}}
+  </div>
+  <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-preview">
+    <div class="card-body gap-2 p-3 sm:p-6">
+      <h2 class="card-title" id="sec-preview">Aperçu de l'annonce « started »</h2>
+      <p class="text-sm opacity-70">Torrent fictif, tracker d'exemple sans passkey, graine fixe : le peer_id et la key changent à chaque lancement réel. Les en-têtes sont dans l'ordre exact du profil.</p>
+      <pre class="bg-base-200 rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all" data-preview>{{.Data.Preview.RequestLine}}
+{{range .Data.Preview.Headers}}{{.Name}}: {{.Value}}
+{{end}}</pre>
+    </div>
+  </section>
+  <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-json">
+    <div class="card-body gap-2 p-3 sm:p-6">
+      <h2 class="card-title" id="sec-json">Profil (lecture seule)</h2>
+      <pre class="bg-base-200 rounded p-3 text-xs overflow-x-auto max-h-[32rem]" data-profile-json>{{.Data.JSON}}</pre>
+    </div>
+  </section>
+</div>
+{{end}}

@@ -1,0 +1,3 @@
+# Accept-Encoding : valeur de la libcurl de l image Docker linuxserver (Alpine : deflate, gzip, br) ;
+# le profil garde deflate, gzip : le client HTTP de seedmirage ne décode pas br.
+headers.Accept-Encoding

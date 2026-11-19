@@ -1,0 +1,11 @@
+/*
+ * Source de ui.css (généré par `make css`, commité). Thèmes daisyUI clair et sombre
+ * (le sombre suit prefers-color-scheme et le bouton de bascule de static/app.js).
+ */
+@import "tailwindcss" source(none);
+@source "./templates/**/*.html";
+@source "./static/app.js";
+
+@plugin "../../tools/daisyui/daisyui.mjs" {
+  themes: light --default, dark --prefersdark;
+}

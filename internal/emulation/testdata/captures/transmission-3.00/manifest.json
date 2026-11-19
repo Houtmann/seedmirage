@@ -1,0 +1,49 @@
+{
+  "torrents": [
+    {
+      "file": "capture-01-http.torrent",
+      "name": "seedmirage-capture-78145ad7224bd12b-4959",
+      "infoHash": "7cba6e9121457e5858f380d63b9ac6172e4f0057",
+      "length": 2432036864,
+      "private": false,
+      "transport": "http",
+      "announceUrl": "http://host.docker.internal:6973/announce"
+    },
+    {
+      "file": "capture-02-http.torrent",
+      "name": "seedmirage-capture-78145ad7224bd12b-1367",
+      "infoHash": "a32916902870a34c92efef4432bc3b273d09692d",
+      "length": 4619333632,
+      "private": false,
+      "transport": "http",
+      "announceUrl": "http://host.docker.internal:6973/announce"
+    },
+    {
+      "file": "capture-03-http.torrent",
+      "name": "seedmirage-capture-78145ad7224bd12b-3",
+      "infoHash": "5cf194788029d6a3db2baef81b9055ff6db14167",
+      "length": 2411737088,
+      "private": false,
+      "transport": "http",
+      "announceUrl": "http://host.docker.internal:6973/announce"
+    },
+    {
+      "file": "capture-04-http.torrent",
+      "name": "seedmirage-capture-78145ad7224bd12b-4862",
+      "infoHash": "2a27c90644a7fe925f962513ebfb948f407a202b",
+      "length": 753917952,
+      "private": true,
+      "transport": "http",
+      "announceUrl": "http://host.docker.internal:6973/announce"
+    },
+    {
+      "file": "capture-01-udp.torrent",
+      "name": "seedmirage-capture-78145ad7224bd12b-0",
+      "infoHash": "00ed1d6030728050de6371ac8efaa99a989e8625",
+      "length": 367001600,
+      "private": false,
+      "transport": "udp",
+      "announceUrl": "udp://host.docker.internal:6973/announce"
+    }
+  ]
+}

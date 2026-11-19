@@ -1,0 +1,35 @@
+{{define "layout"}}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"responseHandling":[{"code":"204","swap":false},{"code":"422","swap":true,"error":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true},{"code":"...","swap":false}]}'>
+<title>{{template "title" .}} · seedmirage</title>
+<link rel="stylesheet" href="{{asset "ui.css"}}">
+<script src="{{asset "app.js"}}"></script>
+<script src="{{asset "dash.js"}}" defer></script>
+<script src="{{asset "htmx.min.js"}}" defer></script>
+<script src="{{asset "sse.js"}}" defer></script>
+</head>
+<body class="min-h-screen bg-base-200"{{if .HXHeaders}} hx-headers="{{.HXHeaders}}"{{end}}>
+<header class="navbar bg-base-100 shadow-sm flex-wrap gap-2 px-3">
+  <a href="/" class="text-lg font-semibold">seedmirage</a>
+  {{if .Nav}}
+  <nav class="flex-1 min-w-0" aria-label="Navigation principale">
+    <ul class="menu menu-horizontal menu-sm flex-wrap gap-1 p-0">
+      <li><a href="/">Tableau de bord</a></li>
+      <li><a href="/torrents">Torrents</a></li>
+      <li><a href="/profiles">Profils</a></li>
+      <li><a href="/stats">Statistiques</a></li>
+      <li><a href="/settings">Réglages</a></li>
+      <li><a href="/status">État</a></li>
+    </ul>
+  </nav>
+  {{else}}<div class="flex-1"></div>{{end}}
+  <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle aria-label="Basculer le thème clair/sombre">Thème</button>
+</header>
+<main class="mx-auto max-w-6xl p-4">
+{{template "content" .}}
+</main>
+</body>
+</html>{{end}}

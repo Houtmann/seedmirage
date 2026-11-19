@@ -1,0 +1,7 @@
+query: info_hash=%00%20~%80%ffaZ5-_.~!*()%27%2b%25%26&peer_id=-qB4670-jAirjzOywC-2&port=51413&uploaded=4200000&downloaded=0&left=0&corrupt=0&key=316ACCB8&event=stopped&numwant=0&compact=1&no_peer_id=1&supportcrypto=1&redundant=0
+header: User-Agent: qBittorrent/4.6.7
+header: Accept-Encoding: gzip
+header: Connection: close
+peer_id_hex: 2d7142343637302d6a4169726a7a4f7977432d32
+key: 316ACCB8
+numwant: 0
