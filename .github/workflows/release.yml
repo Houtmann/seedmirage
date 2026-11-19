@@ -23,8 +23,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
+          version: v2.15.0
           install-only: true
       - name: Install Tailwind (pinned sha256)
         run: make tools
