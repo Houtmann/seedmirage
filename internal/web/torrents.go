@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"seedmirage/internal/engine"
+	"seedmirage/internal/i18n"
 	"seedmirage/internal/tracker"
 )
 
@@ -67,16 +68,16 @@ type torrentsView struct {
 	Manage   bool // upload, archive, restore and delete are available
 }
 
-var reasonLabels = map[string]string{
-	engine.ReasonRatio:       "ratio atteint",
-	engine.ReasonIdle:        "essaim inactif",
-	engine.ReasonFailures:    "trop d'échecs du tracker",
-	engine.ReasonStartFailed: "démarrage impossible",
+var reasonKeys = map[string]string{
+	engine.ReasonRatio:       "reason.ratio",
+	engine.ReasonIdle:        "reason.idle",
+	engine.ReasonFailures:    "reason.failures",
+	engine.ReasonStartFailed: "reason.startFailed",
 }
 
-func reasonLabel(r string) string {
-	if l, ok := reasonLabels[r]; ok {
-		return l
+func reasonLabel(lang i18n.Lang, r string) string {
+	if k, ok := reasonKeys[r]; ok {
+		return i18n.T(lang, k)
 	}
 	return sanitizeError(r)
 }
@@ -94,7 +95,7 @@ func redactURL(raw string) string {
 	return tracker.RedactURL(u)
 }
 
-func (s *Server) buildTorrents(list engine.TorrentList, q url.Values) torrentsView {
+func (s *Server) buildTorrents(lang i18n.Lang, list engine.TorrentList, q url.Values) torrentsView {
 	v := torrentsView{Tab: q.Get("tab"), Query: strings.TrimSpace(q.Get("q")), Sort: q.Get("sort"), Dir: q.Get("dir")}
 	switch v.Tab {
 	case tabPending, tabArchived:
@@ -115,30 +116,30 @@ func (s *Server) buildTorrents(list engine.TorrentList, q url.Values) torrentsVi
 	active := make([]torrentRow, 0, len(list.Active))
 	for _, t := range list.Active {
 		r := torrentRow{
-			Hash: t.InfoHash.Hex(), Name: t.Name, Size: formatSize(t.Size), SizeBytes: t.Size,
+			Hash: t.InfoHash.Hex(), Name: t.Name, Size: i18n.FormatSize(lang, t.Size), SizeBytes: t.Size,
 			Tracker: trackerHost(redactURL(t.Announce.Tracker)), Swarm: "—", Leechers: t.Announce.Leechers,
-			Total: formatSize(t.UploadedTotal), TotalRaw: t.UploadedTotal, Ratio: formatRatio(t.UploadedTotal, t.Size),
-			State: "seed", Error: sanitizeError(t.LastError),
+			Total: i18n.FormatSize(lang, t.UploadedTotal), TotalRaw: t.UploadedTotal, Ratio: i18n.FormatRatio(lang, t.UploadedTotal, t.Size),
+			State: i18n.T(lang, "torrents.state.seed"), Error: sanitizeError(t.LastError),
 		}
 		if t.Announce.Announced {
 			r.Swarm = strconv.Itoa(t.Announce.Seeders) + " / " + strconv.Itoa(t.Announce.Leechers)
 		}
 		if t.Downloading {
-			r.State = "téléchargement"
-			r.Progress = progressText(t.Downloaded, t.Left)
+			r.State = i18n.T(lang, "torrents.state.downloading")
+			r.Progress = progressText(lang, t.Downloaded, t.Left)
 		} else if !t.Announce.Announced {
-			r.State = "en attente d'annonce"
+			r.State = i18n.T(lang, "torrents.state.waiting")
 		}
 		if t.Announce.Failures > 0 {
-			r.State = strconv.Itoa(t.Announce.Failures) + " échec(s)"
+			r.State = i18n.TN(lang, "torrents.state.failures", t.Announce.Failures, t.Announce.Failures)
 		}
 		active = append(active, r)
 	}
 	pending := make([]torrentRow, 0, len(list.Pending))
 	for _, p := range list.Pending {
 		r := torrentRow{
-			Hash: p.InfoHash.Hex(), Name: p.Name, Size: formatSize(p.Size), SizeBytes: p.Size, Swarm: "—", Leechers: p.Leechers,
-			Total: formatSize(p.UploadedTotal), TotalRaw: p.UploadedTotal, Ratio: formatRatio(p.UploadedTotal, p.Size), State: "en attente",
+			Hash: p.InfoHash.Hex(), Name: p.Name, Size: i18n.FormatSize(lang, p.Size), SizeBytes: p.Size, Swarm: "—", Leechers: p.Leechers,
+			Total: i18n.FormatSize(lang, p.UploadedTotal), TotalRaw: p.UploadedTotal, Ratio: i18n.FormatRatio(lang, p.UploadedTotal, p.Size), State: i18n.T(lang, "torrents.state.pending"),
 		}
 		if p.SwarmKnown {
 			r.Swarm = strconv.Itoa(p.Seeders) + " / " + strconv.Itoa(p.Leechers)
@@ -148,8 +149,8 @@ func (s *Server) buildTorrents(list engine.TorrentList, q url.Values) torrentsVi
 	archived := make([]torrentRow, 0, len(list.Archived))
 	for _, a := range list.Archived {
 		archived = append(archived, torrentRow{
-			Hash: a.InfoHash, Name: a.Name, Size: "—", Swarm: "—", Total: formatSize(a.UploadedTotal), TotalRaw: a.UploadedTotal, Ratio: "—",
-			State: "archivé", Reason: reasonLabel(a.Reason), Date: formatDate(a.At),
+			Hash: a.InfoHash, Name: a.Name, Size: "—", Swarm: "—", Total: i18n.FormatSize(lang, a.UploadedTotal), TotalRaw: a.UploadedTotal, Ratio: "—",
+			State: i18n.T(lang, "torrents.state.archived"), Reason: reasonLabel(lang, a.Reason), Date: formatDate(lang, a.At),
 		})
 	}
 
@@ -218,7 +219,9 @@ func (s *Server) buildTorrents(list engine.TorrentList, q url.Values) torrentsVi
 		}
 		return "/torrents?" + vals.Encode()
 	}
-	for _, t := range []struct{ id, label string }{{tabActive, "Actifs"}, {tabPending, "En attente"}, {tabArchived, "Archivés"}} {
+	for _, t := range []struct{ id, label string }{
+		{tabActive, i18n.T(lang, "torrents.tab.active")}, {tabPending, i18n.T(lang, "torrents.tab.pending")}, {tabArchived, i18n.T(lang, "torrents.tab.archived")},
+	} {
 		v.Tabs = append(v.Tabs, tabView{ID: t.id, Label: t.label, Count: count[t.id], URL: link(t.id, 1, v.Sort, v.Dir), Cur: t.id == v.Tab})
 	}
 	if v.Page > 1 {
@@ -238,31 +241,31 @@ func (s *Server) buildTorrents(list engine.TorrentList, q url.Values) torrentsVi
 	return v
 }
 
-func progressText(downloaded, left int64) string {
+func progressText(lang i18n.Lang, downloaded, left int64) string {
 	total := downloaded + left
 	if total <= 0 {
 		return ""
 	}
-	return decimalComma(float64(downloaded)*100/float64(total), 1) + " %"
+	return i18n.FormatPercent(lang, float64(downloaded)*100/float64(total), 1)
 }
 
-func formatDate(t time.Time) string {
+func formatDate(lang i18n.Lang, t time.Time) string {
 	if t.IsZero() {
 		return "—"
 	}
-	return t.Local().Format("02/01/2006 15:04")
+	return i18n.FormatDateTime(lang, t.Local(), false)
 }
 
-func formatDateTime(t time.Time) string {
+func formatDateTime(lang i18n.Lang, t time.Time) string {
 	if t.IsZero() {
-		return "jamais"
+		return i18n.T(lang, "time.never")
 	}
-	return t.Local().Format("02/01/2006 15:04:05")
+	return i18n.FormatDateTime(lang, t.Local(), true)
 }
 
 func (s *Server) torrentsPage(w http.ResponseWriter, r *http.Request) {
 	pd := s.newPageData(r, true)
-	pd.Data = s.buildTorrents(s.deps.Engine.Torrents(), r.URL.Query())
+	pd.Data = s.buildTorrents(s.langOf(r), s.deps.Engine.Torrents(), r.URL.Query())
 	s.render(w, http.StatusOK, "torrents", pd)
 }
 
@@ -316,13 +319,13 @@ type detailView struct {
 	Tracker     string
 }
 
-func (s *Server) buildDetail(d engine.TorrentDetail) detailView {
+func (s *Server) buildDetail(lang i18n.Lang, d engine.TorrentDetail) detailView {
 	now := s.clock.Now()
 	v := detailView{
-		Hash: d.InfoHash, Name: d.Name, Size: formatSize(d.Size), Private: d.Private,
-		Total: formatSize(d.UploadedTotal), Ratio: formatRatio(d.UploadedTotal, d.Size),
-		Downloaded: formatSize(d.DownloadedTotal), LastError: sanitizeError(d.LastError),
-		FirstSeen: formatDateTime(d.FirstSeen), LastSeen: formatDateTime(d.LastSeen),
+		Hash: d.InfoHash, Name: d.Name, Size: i18n.FormatSize(lang, d.Size), Private: d.Private,
+		Total: i18n.FormatSize(lang, d.UploadedTotal), Ratio: i18n.FormatRatio(lang, d.UploadedTotal, d.Size),
+		Downloaded: i18n.FormatSize(lang, d.DownloadedTotal), LastError: sanitizeError(d.LastError),
+		FirstSeen: formatDateTime(lang, d.FirstSeen), LastSeen: formatDateTime(lang, d.LastSeen),
 		Active: d.Status == engine.StatusActive, Archived: d.Status == engine.StatusArchived,
 	}
 	_, v.Manage = s.deps.Engine.(torrentBackend)
@@ -331,18 +334,18 @@ func (s *Server) buildDetail(d engine.TorrentDetail) detailView {
 	}
 	switch d.Status {
 	case engine.StatusActive:
-		v.Status = "actif"
+		v.Status = i18n.T(lang, "torrent.status.active")
 	case engine.StatusPending:
-		v.Status = "en attente"
+		v.Status = i18n.T(lang, "torrent.status.pending")
 	default:
-		v.Status = "archivé"
+		v.Status = i18n.T(lang, "torrent.status.archived")
 	}
 	if d.Archive != nil {
-		v.Reason, v.ArchivedAt = reasonLabel(d.Archive.Reason), formatDate(d.Archive.At)
+		v.Reason, v.ArchivedAt = reasonLabel(lang, d.Archive.Reason), formatDate(lang, d.Archive.At)
 	}
 	if t := d.Info; t != nil {
-		v.Session = formatSize(t.Uploaded)
-		v.Speed = formatSpeed(t.Speed)
+		v.Session = i18n.FormatSize(lang, t.Uploaded)
+		v.Speed = i18n.FormatSpeed(lang, t.Speed)
 		v.Seeders, v.Leechers, v.Announced = t.Announce.Seeders, t.Announce.Leechers, t.Announce.Announced
 		v.Failures = t.Announce.Failures
 		v.Tracker = trackerHost(redactURL(t.Announce.Tracker))
@@ -351,35 +354,35 @@ func (s *Server) buildDetail(d engine.TorrentDetail) detailView {
 		}
 		if !t.Announce.NextAnnounce.IsZero() {
 			v.NextUnix = t.Announce.NextAnnounce.Unix()
-			v.NextText = formatCountdown(t.Announce.NextAnnounce.Sub(now))
+			v.NextText = formatCountdown(lang, t.Announce.NextAnnounce.Sub(now))
 		}
 		if t.Downloading {
 			v.Downloading = true
-			v.Progress = progressText(t.Downloaded, t.Left) + " (" + formatSize(t.Downloaded) + " / " + formatSize(t.Downloaded+t.Left) + ")"
+			v.Progress = progressText(lang, t.Downloaded, t.Left) + " (" + i18n.FormatSize(lang, t.Downloaded) + " / " + i18n.FormatSize(lang, t.Downloaded+t.Left) + ")"
 		}
 	}
 	for _, tier := range d.Tiers {
 		var tv []trackerView
 		for _, t := range tier {
 			tv = append(tv, trackerView{
-				URL: redactURL(t.URL), LastSuccess: formatDateTime(t.LastSuccess), LastFailure: formatDateTime(t.LastFailure),
+				URL: redactURL(t.URL), LastSuccess: formatDateTime(lang, t.LastSuccess), LastFailure: formatDateTime(lang, t.LastFailure),
 				LastError: sanitizeError(t.LastError),
 			})
 		}
 		v.Tiers = append(v.Tiers, tv)
 	}
 	for _, a := range d.Recent {
-		av := announceView{Time: formatDateTime(a.At), Event: a.Event, Tracker: trackerHost(redactURL(a.Tracker)), Swarm: "—", Interval: "—", OK: a.OK}
+		av := announceView{Time: formatDateTime(lang, a.At), Event: a.Event, Tracker: trackerHost(redactURL(a.Tracker)), Swarm: "—", Interval: "—", OK: a.OK}
 		if a.OK {
 			av.Swarm = strconv.Itoa(a.Seeders) + " / " + strconv.Itoa(a.Leechers)
 			av.Interval = shortDuration(a.Interval)
-			av.Result = "succès"
+			av.Result = i18n.T(lang, "torrent.success")
 			if av.Event == "" {
 				av.Event = "—"
 			}
 		} else {
 			av.Event = "—"
-			av.Result = "échec : " + sanitizeError(a.Err)
+			av.Result = i18n.T(lang, "torrent.failure", sanitizeError(a.Err))
 		}
 		v.Recent = append(v.Recent, av)
 	}
@@ -398,7 +401,7 @@ func (s *Server) torrentDetailPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pd := s.newPageData(r, true)
-	pd.Data = s.buildDetail(d)
+	pd.Data = s.buildDetail(s.langOf(r), d)
 	s.render(w, http.StatusOK, "torrent", pd)
 }
 

@@ -330,3 +330,25 @@ func TestDefaultOpen(t *testing.T) {
 		t.Errorf("SEEDMIRAGE_OPEN=0 must disable open: %v %+v", err, *s)
 	}
 }
+
+func TestIssuesMatchValidate(t *testing.T) {
+	c := Defaults()
+	c.UploadRateMin, c.UploadRateMax = 10, 5
+	c.Schedule.Timezone = "Nowhere/Land"
+	is := c.Issues()
+	if is["uploadRateMax"].Code != "gteMin" || is["schedule.timezone"].Code != "timezone" || is["schedule.timezone"].Args[0] != "Nowhere/Land" {
+		t.Errorf("issues = %+v", is)
+	}
+	var fe FieldErrors
+	if err := c.Validate(); !errors.As(err, &fe) || len(fe) != len(is) {
+		t.Fatalf("Validate = %v, want %d errors", err, len(is))
+	}
+	for k, i := range is {
+		if fe[k] != i.Message || i.Message == "" {
+			t.Errorf("%s: FieldErrors %q, Issue %q", k, fe[k], i.Message)
+		}
+	}
+	if len(Defaults().Issues()) != 0 {
+		t.Error("defaults should be valid")
+	}
+}

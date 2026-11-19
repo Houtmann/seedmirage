@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"seedmirage/internal/engine"
+	"seedmirage/internal/i18n"
 )
 
 // Upload limits: 10 MiB per file (the library limit), 50 files per request.
@@ -59,7 +60,7 @@ type manageHandlers struct {
 }
 
 // shownName is the file name as displayed: no directory part, bounded length.
-func shownName(raw string) string {
+func shownName(lang i18n.Lang, raw string) string {
 	if i := strings.LastIndexAny(raw, `/\`); i >= 0 {
 		raw = raw[i+1:]
 	}
@@ -67,23 +68,23 @@ func shownName(raw string) string {
 		raw = string([]rune(raw)[:maxShownName]) + "…"
 	}
 	if raw == "" {
-		return "(sans nom)"
+		return i18n.T(lang, "upload.unnamed")
 	}
 	return raw
 }
 
-func (h *manageHandlers) addError(name string, err error) uploadResult {
+func (h *manageHandlers) addError(lang i18n.Lang, name string, err error) uploadResult {
 	r := uploadResult{Name: name}
 	switch {
 	case errors.Is(err, engine.ErrDuplicate):
-		r.Message = "déjà présent (actif, en attente ou archivé)"
+		r.Message = i18n.T(lang, "upload.duplicate")
 	case errors.Is(err, engine.ErrInvalidTorrent):
-		r.Message = "fichier .torrent invalide"
+		r.Message = i18n.T(lang, "upload.invalid")
 	case errors.Is(err, engine.ErrTorrentTooLarge):
-		r.Message = "fichier trop volumineux (10 Mo au plus)"
+		r.Message = i18n.T(lang, "upload.tooLarge")
 	default:
 		h.s.log.Warn("torrent upload failed", "file", name, "err", err)
-		r.Message = "ajout impossible"
+		r.Message = i18n.T(lang, "upload.failed")
 	}
 	return r
 }
@@ -99,10 +100,11 @@ func readFile(p *multipart.Part) (data []byte, tooBig bool, err error) {
 // is written (library.Add), and gets its own result line. 422 when no file
 // was added.
 func (h *manageHandlers) upload(w http.ResponseWriter, r *http.Request) {
+	lang := h.s.langOf(r)
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 	mr, err := r.MultipartReader()
 	if err != nil {
-		h.writeUpload(w, uploadView{Results: []uploadResult{{Name: "envoi", Message: "requête multipart attendue"}}})
+		h.writeUpload(w, lang, uploadView{Results: []uploadResult{{Name: i18n.T(lang, "upload.name"), Message: i18n.T(lang, "upload.multipart")}}})
 		return
 	}
 	var v uploadView
@@ -112,11 +114,11 @@ func (h *manageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				var mbe *http.MaxBytesError
-				msg := "lecture de l'envoi impossible"
+				msg := i18n.T(lang, "upload.bodyUnreadable")
 				if errors.As(err, &mbe) {
-					msg = "envoi trop volumineux"
+					msg = i18n.T(lang, "upload.bodyTooLarge")
 				}
-				v.Results = append(v.Results, uploadResult{Name: "envoi", Message: msg})
+				v.Results = append(v.Results, uploadResult{Name: i18n.T(lang, "upload.name"), Message: msg})
 			}
 			break
 		}
@@ -125,9 +127,9 @@ func (h *manageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 			_ = p.Close()
 			continue
 		}
-		name := shownName(raw)
+		name := shownName(lang, raw)
 		if files++; files > maxUploadFiles {
-			v.Results = append(v.Results, uploadResult{Name: "au-delà de 50 fichiers", Message: "ignoré"})
+			v.Results = append(v.Results, uploadResult{Name: i18n.T(lang, "upload.beyond"), Message: i18n.T(lang, "upload.ignored")})
 			_ = p.Close()
 			break
 		}
@@ -135,19 +137,19 @@ func (h *manageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 		_ = p.Close()
 		switch {
 		case rerr != nil:
-			v.Results = append(v.Results, uploadResult{Name: name, Message: "lecture impossible"})
+			v.Results = append(v.Results, uploadResult{Name: name, Message: i18n.T(lang, "upload.readFailed")})
 			files = maxUploadFiles + 1 // the stream is broken: stop
 		case tooBig:
-			v.Results = append(v.Results, uploadResult{Name: name, Message: "fichier trop volumineux (10 Mo au plus)"})
+			v.Results = append(v.Results, uploadResult{Name: name, Message: i18n.T(lang, "upload.tooLarge")})
 		default:
 			res, aerr := h.be.AddTorrent(r.Context(), raw, data)
 			if aerr != nil {
-				v.Results = append(v.Results, h.addError(name, aerr))
+				v.Results = append(v.Results, h.addError(lang, name, aerr))
 				break
 			}
-			msg := "ajouté"
+			msg := i18n.T(lang, "upload.added")
 			if res.Started {
-				msg = "ajouté et démarré"
+				msg = i18n.T(lang, "upload.addedStarted")
 			}
 			v.Results = append(v.Results, uploadResult{Name: name, OK: true, Message: msg, Hash: res.InfoHash})
 			v.Added++
@@ -157,18 +159,18 @@ func (h *manageHandlers) upload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(v.Results) == 0 {
-		v.Results = []uploadResult{{Name: "envoi", Message: "aucun fichier .torrent reçu"}}
+		v.Results = []uploadResult{{Name: i18n.T(lang, "upload.name"), Message: i18n.T(lang, "upload.noFile")}}
 	}
-	h.writeUpload(w, v)
+	h.writeUpload(w, lang, v)
 }
 
-func (h *manageHandlers) writeUpload(w http.ResponseWriter, v uploadView) {
+func (h *manageHandlers) writeUpload(w http.ResponseWriter, lang i18n.Lang, v uploadView) {
 	status := http.StatusOK
 	if v.Added == 0 {
 		status = http.StatusUnprocessableEntity
 	}
 	var sb strings.Builder
-	if err := h.s.pages["torrents"].ExecuteTemplate(&sb, "uploadresult", v); err != nil {
+	if err := h.s.page(lang, "torrents").ExecuteTemplate(&sb, "uploadresult", v); err != nil {
 		h.s.log.Error("render upload result", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -182,22 +184,23 @@ func (h *manageHandlers) writeUpload(w http.ResponseWriter, v uploadView) {
 // reloaded (HX-Refresh) or redirected; on failure the answer is a 422 with a
 // toast, swapped out of band.
 func (h *manageHandlers) act(w http.ResponseWriter, r *http.Request, do func(context.Context, string) error, redirect string) {
+	lang := h.s.langOf(r)
 	hash := r.PathValue("hash")
 	if !validHash(hash) {
 		http.NotFound(w, r)
 		return
 	}
 	if err := do(r.Context(), hash); err != nil {
-		text := "Opération impossible"
+		text := i18n.T(lang, "toast.actionImpossible")
 		switch {
 		case errors.Is(err, engine.ErrUnknownTorrent):
-			text = "Torrent introuvable dans cet état (déjà modifié ?)"
+			text = i18n.T(lang, "toast.torrentNotFound")
 		case errors.Is(err, engine.ErrDuplicate):
-			text = "Un torrent identique est déjà dans la bibliothèque"
+			text = i18n.T(lang, "toast.torrentDuplicate")
 		default:
 			h.s.log.Warn("torrent action failed", "torrent", hash, "path", r.URL.Path, "err", err)
 		}
-		toast, terr := h.s.renderFragment("toast", toastView{Kind: "error", Text: text})
+		toast, terr := h.s.renderFragment(lang, "toast", toastView{Kind: "error", Text: text})
 		if terr != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

@@ -21,6 +21,7 @@ import (
 	"seedmirage/internal/config"
 	"seedmirage/internal/engine"
 	"seedmirage/internal/events"
+	"seedmirage/internal/i18n"
 )
 
 // cfgBackend is a fakeBackend that also supports the settings page.
@@ -89,6 +90,7 @@ func (e *setEnv) do(method, target string, form url.Values, csrf bool) *httptest
 		body = strings.NewReader(form.Encode())
 	}
 	r := httptest.NewRequest(method, target, body)
+	r.Header.Set("Accept-Language", "fr")
 	r.Host = "127.0.0.1:7070"
 	r.AddCookie(&http.Cookie{Name: SessionCookie, Value: e.srv.auth.sessionValue()}) //nolint:gosec // test cookie
 	if form != nil {
@@ -172,7 +174,7 @@ func TestSettingsInvalidIs422AndKeepsInput(t *testing.T) {
 	}
 	body := w.Body.String()
 	for _, want := range []string{
-		"must be &gt;= uploadRateMin", "nombre entier attendu", "must be in ]0,1]", "durée attendue", "adresse IP invalide",
+		"doit être au moins égal au débit minimum", "nombre entier attendu", "doit être dans ]0 ; 1]", "durée attendue", "adresse IP invalide",
 		`value="900"`, `value="abc"`, `value="soon"`, `value="7"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -257,6 +259,7 @@ func TestSettingsProtected(t *testing.T) {
 		t.Errorf("no csrf: %d", w.Code)
 	}
 	r := httptest.NewRequest("POST", "/settings", strings.NewReader(form.Encode()))
+	r.Header.Set("Accept-Language", "fr")
 	r.Host = "127.0.0.1:7070"
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
@@ -265,6 +268,7 @@ func TestSettingsProtected(t *testing.T) {
 		t.Errorf("no session: %d", w.Code)
 	}
 	r = httptest.NewRequest("POST", "/settings", strings.NewReader(form.Encode()))
+	r.Header.Set("Accept-Language", "fr")
 	r.Host = "127.0.0.1:7070"
 	r.Header.Set("Origin", "http://evil.example")
 	r.Header.Set(CSRFHeader, e.csrf())
@@ -290,6 +294,7 @@ func TestSettingsChangeReachesEventStream(t *testing.T) {
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/events", nil)
 	req.AddCookie(&http.Cookie{Name: SessionCookie, Value: e.srv.auth.sessionValue()}) //nolint:gosec // test cookie
+	req.Header.Set("Accept-Language", "fr")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -328,7 +333,7 @@ func TestSettingsFieldNamesUnique(t *testing.T) {
 				t.Errorf("duplicate field %s", fd.Name)
 			}
 			seen[fd.Name] = true
-			if fd.get == nil || fd.set == nil || fd.Label == "" || fd.Help == "" {
+			if fd.get == nil || fd.set == nil || !i18n.Has(i18n.EN, "settings."+fd.Name+".label") || !i18n.Has(i18n.EN, "settings."+fd.Name+".help") {
 				t.Errorf("field %s incomplete", fd.Name)
 			}
 		}

@@ -2,22 +2,22 @@
 <section class="card bg-base-100 shadow-sm mb-4">
   <div class="card-body gap-3">
     <div class="flex flex-wrap items-center gap-2">
-      <h1 class="card-title flex-1 min-w-0">Tableau de bord</h1>
-      {{if .Running}}<span class="badge badge-success">En marche</span>{{else}}<span class="badge badge-ghost">Arrêté</span>{{end}}
+      <h1 class="card-title flex-1 min-w-0">{{t "dash.title"}}</h1>
+      {{if .Running}}<span class="badge badge-success">{{t "dash.running"}}</span>{{else}}<span class="badge badge-ghost">{{t "dash.stopped"}}</span>{{end}}
       {{if .Running}}
-      <button type="button" class="btn btn-sm btn-error" hx-post="/seed/stop" hx-target="#dash" hx-swap="innerHTML" hx-disabled-elt="this">Arrêter</button>
+      <button type="button" class="btn btn-sm btn-error" hx-post="/seed/stop" hx-target="#dash" hx-swap="innerHTML" hx-disabled-elt="this">{{t "dash.stop"}}</button>
       {{else}}
-      <button type="button" class="btn btn-sm btn-primary" hx-post="/seed/start" hx-target="#dash" hx-swap="innerHTML" hx-disabled-elt="this">Démarrer</button>
+      <button type="button" class="btn btn-sm btn-primary" hx-post="/seed/start" hx-target="#dash" hx-swap="innerHTML" hx-disabled-elt="this">{{t "dash.start"}}</button>
       {{end}}
     </div>
-    {{if .Paused}}<p class="text-sm opacity-80" role="status">En pause (planning) jusqu'à {{.Paused}}.</p>{{end}}
+    {{if .Paused}}<p class="text-sm opacity-80" role="status">{{t "dash.paused" .Paused}}</p>{{end}}
     <dl class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <div><dt class="text-xs opacity-70">Profil client</dt><dd class="font-medium break-all">{{if .Profile}}{{.Profile}}{{else}}—{{end}}</dd></div>
-      <div><dt class="text-xs opacity-70">Vitesse globale</dt><dd class="font-medium">{{.Speed}}</dd></div>
-      <div><dt class="text-xs opacity-70">Uploadé (session)</dt><dd class="font-medium">{{.Uploaded}}</dd></div>
-      <div><dt class="text-xs opacity-70">Uploadé (total)</dt><dd class="font-medium">{{.Total}}</dd></div>
-      <div><dt class="text-xs opacity-70">Torrents actifs</dt><dd class="font-medium">{{.Active}}</dd></div>
-      <div><dt class="text-xs opacity-70">En attente</dt><dd class="font-medium">{{.Pending}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.profile"}}</dt><dd class="font-medium break-all">{{if .Profile}}{{.Profile}}{{else}}—{{end}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.speed"}}</dt><dd class="font-medium">{{.Speed}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.uploadedSession"}}</dt><dd class="font-medium">{{.Uploaded}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.uploadedTotal"}}</dt><dd class="font-medium">{{.Total}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.active"}}</dt><dd class="font-medium">{{.Active}}</dd></div>
+      <div><dt class="text-xs opacity-70">{{t "dash.pending"}}</dt><dd class="font-medium">{{.Pending}}</dd></div>
     </dl>
   </div>
 </section>
@@ -27,7 +27,7 @@
     <div class="overflow-x-auto">
       <table class="table table-sm">
         <thead>
-          <tr><th>Nom</th><th>Taille</th><th>Tracker</th><th class="text-right">S / L</th><th class="text-right">Vitesse</th><th class="text-right">Uploadé</th><th class="text-right">Total</th><th class="text-right">Ratio</th><th>Prochaine annonce</th><th>État</th></tr>
+          <tr><th>{{t "dash.col.name"}}</th><th>{{t "dash.col.size"}}</th><th>{{t "dash.col.tracker"}}</th><th class="text-right">S / L</th><th class="text-right">{{t "dash.col.speed"}}</th><th class="text-right">{{t "dash.col.uploaded"}}</th><th class="text-right">{{t "dash.col.total"}}</th><th class="text-right">{{t "dash.col.ratio"}}</th><th>{{t "dash.col.next"}}</th><th>{{t "dash.col.state"}}</th></tr>
         </thead>
         <tbody>
           {{range .Rows}}
@@ -40,15 +40,15 @@
             <td class="text-right whitespace-nowrap">{{.Uploaded}}</td>
             <td class="text-right whitespace-nowrap">{{.Total}}</td>
             <td class="text-right whitespace-nowrap">{{.Ratio}}</td>
-            <td class="whitespace-nowrap">{{if .NextUnix}}<time data-next="{{.NextUnix}}">{{.NextText}}</time> {{if .NextEvent}}<span class="text-xs opacity-60">({{.NextEvent}})</span>{{end}}{{else}}en cours{{end}}</td>
-            <td class="whitespace-nowrap">{{if .Failures}}<span class="badge badge-error badge-sm">{{.Failures}} échec{{if gt .Failures 1}}s{{end}}</span> {{end}}<span class="text-xs opacity-60">annonce {{.LastTry}}</span></td>
+            <td class="whitespace-nowrap">{{if .NextUnix}}<time data-next="{{.NextUnix}}">{{.NextText}}</time> {{if .NextEvent}}<span class="text-xs opacity-60">({{.NextEvent}})</span>{{end}}{{else}}{{t "dash.inProgress"}}{{end}}</td>
+            <td class="whitespace-nowrap">{{if .Failures}}<span class="badge badge-error badge-sm">{{tn "dash.failures" .Failures .Failures}}</span> {{end}}<span class="text-xs opacity-60">{{t "dash.lastAnnounce" .LastTry}}</span></td>
           </tr>
           {{end}}
         </tbody>
       </table>
     </div>
     {{else}}
-    <p class="p-4 text-sm opacity-70">Aucun torrent actif.{{if not .Running}} Démarrez le seed pour commencer.{{end}}</p>
+    <p class="p-4 text-sm opacity-70">{{t "dash.empty"}}{{if not .Running}}{{t "dash.emptyStart"}}{{end}}</p>
     {{end}}
   </div>
 </section>

@@ -12,6 +12,7 @@ import (
 
 	"seedmirage/internal/config"
 	"seedmirage/internal/engine"
+	"seedmirage/internal/i18n"
 )
 
 // maxImportBody bounds the whole multipart body of a profile import (the
@@ -114,20 +115,20 @@ func (h *profilesHandlers) page(w http.ResponseWriter, r *http.Request) {
 	h.s.render(w, http.StatusOK, "profiles", pd)
 }
 
-func (h *profilesHandlers) listFragment(w http.ResponseWriter, _ *http.Request) {
-	h.write(w, http.StatusOK, "profileslist", h.view(""), nil)
+func (h *profilesHandlers) listFragment(w http.ResponseWriter, r *http.Request) {
+	h.write(w, h.s.langOf(r), http.StatusOK, "profileslist", h.view(""), nil)
 }
 
 // write renders a fragment followed by out-of-band toasts.
-func (h *profilesHandlers) write(w http.ResponseWriter, status int, tmpl string, data any, toasts []toastView) {
+func (h *profilesHandlers) write(w http.ResponseWriter, lang i18n.Lang, status int, tmpl string, data any, toasts []toastView) {
 	var sb strings.Builder
-	if err := h.s.pages["profiles"].ExecuteTemplate(&sb, tmpl, data); err != nil {
+	if err := h.s.page(lang, "profiles").ExecuteTemplate(&sb, tmpl, data); err != nil {
 		h.s.log.Error("render profiles", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	for _, t := range toasts {
-		toast, terr := h.s.renderFragment("toast", t)
+		toast, terr := h.s.renderFragment(lang, "toast", t)
 		if terr != nil {
 			continue
 		}
@@ -159,71 +160,73 @@ func (h *profilesHandlers) detail(w http.ResponseWriter, r *http.Request) {
 // use handles POST /profiles/{name}/use with the same sequence as the
 // settings page: validate, ApplyConfig, then Save.
 func (h *profilesHandlers) use(w http.ResponseWriter, r *http.Request) {
+	lang := h.s.langOf(r)
 	name := r.PathValue("name")
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	cur := h.s.deps.Engine.Snapshot().Config
 	choices := h.be.ProfileChoices()
 	if !slices.ContainsFunc(choices, func(c engine.ProfileChoice) bool { return c.Name == name }) {
-		h.write(w, http.StatusUnprocessableEntity, "profileslist", buildProfiles(cur.Profile, choices),
-			[]toastView{{Kind: "error", Text: "Profil inconnu."}})
+		h.write(w, lang, http.StatusUnprocessableEntity, "profileslist", buildProfiles(cur.Profile, choices),
+			[]toastView{{Kind: "error", Text: i18n.T(lang, "toast.profileUnknown")}})
 		return
 	}
 	if name == cur.Profile {
-		h.write(w, http.StatusOK, "profileslist", buildProfiles(cur.Profile, choices),
-			[]toastView{{Kind: "info", Text: "Ce profil est déjà actif."}})
+		h.write(w, lang, http.StatusOK, "profileslist", buildProfiles(cur.Profile, choices),
+			[]toastView{{Kind: "info", Text: i18n.T(lang, "toast.profileAlready")}})
 		return
 	}
 	next := cur
 	next.Profile = name
 	if err := next.Validate(); err != nil {
-		h.fail(w, cur, choices, err)
+		h.fail(w, lang, cur, choices, err)
 		return
 	}
 	if err := h.be.ApplyConfig(next); err != nil {
-		h.fail(w, cur, choices, err)
+		h.fail(w, lang, cur, choices, err)
 		return
 	}
-	toasts := []toastView{{Kind: "info", Text: "Profil « " + name + " » activé : les annonces redémarrent."}}
+	toasts := []toastView{{Kind: "info", Text: i18n.T(lang, "toast.profileActivated", name)}}
 	if err := next.Save(h.path); err != nil {
 		h.s.log.Error("profiles: save", "err", err)
-		toasts = []toastView{{Kind: "warning", Text: "Profil activé mais non enregistré : " + sanitizeError(err.Error())}}
+		toasts = []toastView{{Kind: "warning", Text: i18n.T(lang, "toast.profileNotSaved", sanitizeError(err.Error()))}}
 	}
-	h.write(w, http.StatusOK, "profileslist", buildProfiles(next.Profile, choices), toasts)
+	h.write(w, lang, http.StatusOK, "profileslist", buildProfiles(next.Profile, choices), toasts)
 }
 
-func (h *profilesHandlers) fail(w http.ResponseWriter, cur config.Config, choices []engine.ProfileChoice, err error) {
+func (h *profilesHandlers) fail(w http.ResponseWriter, lang i18n.Lang, cur config.Config, choices []engine.ProfileChoice, err error) {
 	h.s.log.Warn("profiles: use refused", "err", err)
 	msg := sanitizeError(err.Error())
-	h.write(w, http.StatusUnprocessableEntity, "profileslist", buildProfiles(cur.Profile, choices),
-		[]toastView{{Kind: "error", Text: "Profil refusé : " + msg}})
+	h.write(w, lang, http.StatusUnprocessableEntity, "profileslist", buildProfiles(cur.Profile, choices),
+		[]toastView{{Kind: "error", Text: i18n.T(lang, "toast.profileRefused", msg)}})
 }
 
 // importProfile handles POST /profiles/import (multipart, field "file").
 func (h *profilesHandlers) importProfile(w http.ResponseWriter, r *http.Request) {
+	lang := h.s.langOf(r)
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportBody)
 	refuse := func(status int, msg string) {
 		v := h.view(msg)
-		h.write(w, status, "profileslist", v, []toastView{{Kind: "error", Text: "Import refusé : " + msg}})
+		h.write(w, lang, status, "profileslist", v, []toastView{{Kind: "error", Text: i18n.T(lang, "toast.importRefused", msg)}})
 	}
 	if err := r.ParseMultipartForm(maxImportBody); err != nil { //nolint:gosec // body already bounded by MaxBytesReader
 		var mbe *http.MaxBytesError
 		if errors.As(err, &mbe) {
-			refuse(http.StatusUnprocessableEntity, "fichier trop gros (1 Mo au maximum).")
+			refuse(http.StatusUnprocessableEntity, i18n.T(lang, "profiles.err.tooBig"))
 			return
 		}
-		refuse(http.StatusUnprocessableEntity, "formulaire illisible.")
+		refuse(http.StatusUnprocessableEntity, i18n.T(lang, "profiles.err.form"))
 		return
 	}
 	f, _, err := r.FormFile("file")
 	if err != nil {
-		refuse(http.StatusUnprocessableEntity, "aucun fichier reçu.")
+		refuse(http.StatusUnprocessableEntity, i18n.T(lang, "profiles.err.noFile"))
 		return
 	}
 	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(io.LimitReader(f, engine.MaxProfileSize+1))
 	if err != nil {
-		refuse(http.StatusUnprocessableEntity, "fichier illisible.")
+		refuse(http.StatusUnprocessableEntity, i18n.T(lang, "profiles.err.unreadable"))
 		return
 	}
 	h.mu.Lock()
@@ -231,11 +234,11 @@ func (h *profilesHandlers) importProfile(w http.ResponseWriter, r *http.Request)
 	h.mu.Unlock()
 	switch {
 	case errors.Is(err, engine.ErrProfileExists):
-		refuse(http.StatusUnprocessableEntity, "un profil de ce nom existe déjà (jamais écrasé).")
+		refuse(http.StatusUnprocessableEntity, i18n.T(lang, "profiles.err.exists"))
 	case err != nil:
 		refuse(http.StatusUnprocessableEntity, strings.TrimPrefix(sanitizeError(err.Error()), "engine: profil invalide: "))
 	default:
-		h.write(w, http.StatusOK, "profileslist", h.view(""), []toastView{{Kind: "info", Text: "Profil « " + name + " » importé."}})
+		h.write(w, lang, http.StatusOK, "profileslist", h.view(""), []toastView{{Kind: "info", Text: i18n.T(lang, "toast.importDone", name)}})
 	}
 }
 
@@ -254,5 +257,5 @@ func (h *profilesHandlers) updates(w http.ResponseWriter, r *http.Request) {
 		v.Error = sanitizeError(err.Error())
 	}
 	v.UpToDate = err == nil && len(notices) == 0
-	h.write(w, http.StatusOK, "profilesupdates", v, nil)
+	h.write(w, h.s.langOf(r), http.StatusOK, "profilesupdates", v, nil)
 }

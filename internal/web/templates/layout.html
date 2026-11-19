@@ -1,5 +1,5 @@
 {{define "layout"}}<!doctype html>
-<html lang="fr">
+<html lang="{{.Lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,22 +11,28 @@
 <script src="{{asset "htmx.min.js"}}" defer></script>
 <script src="{{asset "sse.js"}}" defer></script>
 </head>
-<body class="min-h-screen bg-base-200"{{if .HXHeaders}} hx-headers="{{.HXHeaders}}"{{end}}>
+<body class="min-h-screen bg-base-200" data-t-in="{{t "time.in"}}" data-t-imminent="{{t "time.imminent"}}"{{if .HXHeaders}} hx-headers="{{.HXHeaders}}"{{end}}>
 <header class="navbar bg-base-100 shadow-sm flex-wrap gap-2 px-3">
   <a href="/" class="text-lg font-semibold">seedmirage</a>
   {{if .Nav}}
-  <nav class="flex-1 min-w-0" aria-label="Navigation principale">
+  <nav class="flex-1 min-w-0" aria-label="{{t "nav.main"}}">
     <ul class="menu menu-horizontal menu-sm flex-wrap gap-1 p-0">
-      <li><a href="/">Tableau de bord</a></li>
-      <li><a href="/torrents">Torrents</a></li>
-      <li><a href="/profiles">Profils</a></li>
-      <li><a href="/stats">Statistiques</a></li>
-      <li><a href="/settings">Réglages</a></li>
-      <li><a href="/status">État</a></li>
+      <li><a href="/">{{t "nav.dashboard"}}</a></li>
+      <li><a href="/torrents">{{t "nav.torrents"}}</a></li>
+      <li><a href="/profiles">{{t "nav.profiles"}}</a></li>
+      <li><a href="/stats">{{t "nav.stats"}}</a></li>
+      <li><a href="/settings">{{t "nav.settings"}}</a></li>
+      <li><a href="/status">{{t "nav.status"}}</a></li>
     </ul>
   </nav>
   {{else}}<div class="flex-1"></div>{{end}}
-  <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle aria-label="Basculer le thème clair/sombre">Thème</button>
+  {{if .Nav}}
+  <form hx-post="/lang" hx-swap="none" class="join" role="group" aria-label="{{t "nav.language"}}">
+    <input type="hidden" name="next" value="{{.Path}}">
+    {{range .Langs}}<button type="submit" name="lang" value="{{.Code}}" lang="{{.Code}}" class="btn btn-ghost btn-xs join-item{{if .Active}} btn-active{{end}}"{{if .Active}} aria-pressed="true"{{else}} aria-pressed="false"{{end}}>{{.Label}}</button>{{end}}
+  </form>
+  {{end}}
+  <button type="button" class="btn btn-ghost btn-sm" data-theme-toggle aria-label="{{t "nav.themeToggle"}}">{{t "nav.theme"}}</button>
 </header>
 <main class="mx-auto max-w-6xl p-4">
 {{template "content" .}}

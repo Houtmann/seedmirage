@@ -102,23 +102,23 @@ func (s Schedule) Location() (*time.Location, error) {
 }
 
 // validate adds the schedule errors (keys "schedule.*") to errs.
-func (s Schedule) validate(errs FieldErrors) {
+func (s Schedule) validate(errs Issues) {
 	if _, err := s.Location(); err != nil {
-		errs["schedule.timezone"] = err.Error()
+		errs.add("schedule.timezone", "timezone", err.Error(), s.Timezone)
 	}
 	for i, v := range s.Hourly {
 		if !(v >= 0 && v <= 2) {
-			errs["schedule.hourly"] = fmt.Sprintf("hour %d: multiplier must be between 0 and 2", i)
+			errs.add("schedule.hourly", "hourRange", fmt.Sprintf("hour %d: multiplier must be between 0 and 2", i), i)
 			break
 		}
 	}
 	for i, p := range s.Pauses {
 		if _, ok := CanonicalDay(p.Day); !ok {
-			errs["schedule.pauses"] = fmt.Sprintf("pause %d: unknown day %q (mon..sun)", i+1, p.Day)
+			errs.add("schedule.pauses", "pauseDay", fmt.Sprintf("pause %d: unknown day %q (mon..sun)", i+1, p.Day), i+1, p.Day)
 			break
 		}
 		if _, _, err := ParseRange(p.Range); err != nil {
-			errs["schedule.pauses"] = fmt.Sprintf("pause %d: %v", i+1, err)
+			errs.add("schedule.pauses", "pauseRange", fmt.Sprintf("pause %d: %v", i+1, err), i+1)
 			break
 		}
 	}

@@ -119,64 +119,89 @@ func (e FieldErrors) Error() string {
 	return "invalid config: " + strings.Join(parts, "; ")
 }
 
+// Issue is one validation problem: a stable Code (translatable by callers),
+// its Args and the English Message used by logs and the CLI.
+type Issue struct {
+	Code    string
+	Args    []any
+	Message string
+}
+
+// Issues maps a JSON field name to its validation problem.
+type Issues map[string]Issue
+
+func (is Issues) add(field, code, msg string, args ...any) {
+	is[field] = Issue{Code: code, Args: args, Message: msg}
+}
+
 // Validate returns a FieldErrors if the configuration is invalid, nil otherwise.
 func (c Config) Validate() error {
-	errs := FieldErrors{}
-	if c.UploadRateMin < 0 {
-		errs["uploadRateMin"] = "must be >= 0"
-	}
-	if c.UploadRateMax < c.UploadRateMin {
-		errs["uploadRateMax"] = "must be >= uploadRateMin"
-	}
-	if c.MaxActiveTorrents < 1 {
-		errs["maxActiveTorrents"] = "must be >= 1"
-	}
-	if strings.TrimSpace(c.Profile) == "" {
-		errs["profile"] = "must not be empty"
-	}
-	if c.RatioTarget < 0 {
-		errs["ratioTarget"] = "must be 0 (disabled) or > 0"
-	}
-	if c.RatioScope != "" && c.RatioScope != RatioScopeSession && c.RatioScope != RatioScopeTotal {
-		errs["ratioScope"] = "must be session or total"
-	}
-	if c.Port < 0 || c.Port > 65535 {
-		errs["port"] = "must be 0 (auto) or between 1 and 65535"
-	}
-	if c.MaxTrackerFailures < 1 {
-		errs["maxTrackerFailures"] = "must be >= 1"
-	}
-	if c.Selection != SelectionRandom && c.Selection != SelectionSwarm {
-		errs["selection"] = "must be random or swarm"
-	}
-	if c.RotateIdleAfter < 0 {
-		errs["rotateIdleAfter"] = "must be >= 0 (0 = never)"
-	}
-	if c.SpeedModel != SpeedModelUniform && c.SpeedModel != SpeedModelSmooth {
-		errs["speedModel"] = "must be uniform or smooth"
-	}
-	if c.MinDownloadRate < 0 {
-		errs["minDownloadRate"] = "must be >= 0"
-	}
-	if c.MaxDownloadRate < c.MinDownloadRate {
-		errs["maxDownloadRate"] = "must be >= minDownloadRate"
-	}
-	if c.Caps.PerLeecherMax < 0 {
-		errs["caps.perLeecherMax"] = "must be >= 0"
-	}
-	if c.Caps.LineMax < 0 {
-		errs["caps.lineMax"] = "must be >= 0"
-	}
-	if !(c.Caps.DailyRatioMax >= 0) || math.IsInf(c.Caps.DailyRatioMax, 0) {
-		errs["caps.dailyRatioMax"] = "must be 0 (disabled) or > 0"
-	}
-	if !(c.Caps.SwarmShare > 0 && c.Caps.SwarmShare <= 1) {
-		errs["caps.swarmShare"] = "must be in ]0,1]"
-	}
-	c.Schedule.validate(errs)
-	if len(errs) == 0 {
+	is := c.Issues()
+	if len(is) == 0 {
 		return nil
 	}
+	errs := FieldErrors{}
+	for k, i := range is {
+		errs[k] = i.Message
+	}
+	return errs
+}
+
+// Issues returns the validation problems by field, with stable codes.
+func (c Config) Issues() Issues {
+	errs := Issues{}
+	if c.UploadRateMin < 0 {
+		errs.add("uploadRateMin", "min0", "must be >= 0")
+	}
+	if c.UploadRateMax < c.UploadRateMin {
+		errs.add("uploadRateMax", "gteMin", "must be >= uploadRateMin")
+	}
+	if c.MaxActiveTorrents < 1 {
+		errs.add("maxActiveTorrents", "min1", "must be >= 1")
+	}
+	if strings.TrimSpace(c.Profile) == "" {
+		errs.add("profile", "empty", "must not be empty")
+	}
+	if c.RatioTarget < 0 {
+		errs.add("ratioTarget", "zeroOrPositive", "must be 0 (disabled) or > 0")
+	}
+	if c.RatioScope != "" && c.RatioScope != RatioScopeSession && c.RatioScope != RatioScopeTotal {
+		errs.add("ratioScope", "sessionOrTotal", "must be session or total")
+	}
+	if c.Port < 0 || c.Port > 65535 {
+		errs.add("port", "port", "must be 0 (auto) or between 1 and 65535")
+	}
+	if c.MaxTrackerFailures < 1 {
+		errs.add("maxTrackerFailures", "min1", "must be >= 1")
+	}
+	if c.Selection != SelectionRandom && c.Selection != SelectionSwarm {
+		errs.add("selection", "randomOrSwarm", "must be random or swarm")
+	}
+	if c.RotateIdleAfter < 0 {
+		errs.add("rotateIdleAfter", "min0", "must be >= 0 (0 = never)")
+	}
+	if c.SpeedModel != SpeedModelUniform && c.SpeedModel != SpeedModelSmooth {
+		errs.add("speedModel", "uniformOrSmooth", "must be uniform or smooth")
+	}
+	if c.MinDownloadRate < 0 {
+		errs.add("minDownloadRate", "min0", "must be >= 0")
+	}
+	if c.MaxDownloadRate < c.MinDownloadRate {
+		errs.add("maxDownloadRate", "gteMinDownload", "must be >= minDownloadRate")
+	}
+	if c.Caps.PerLeecherMax < 0 {
+		errs.add("caps.perLeecherMax", "min0", "must be >= 0")
+	}
+	if c.Caps.LineMax < 0 {
+		errs.add("caps.lineMax", "min0", "must be >= 0")
+	}
+	if !(c.Caps.DailyRatioMax >= 0) || math.IsInf(c.Caps.DailyRatioMax, 0) {
+		errs.add("caps.dailyRatioMax", "zeroOrPositive", "must be 0 (disabled) or > 0")
+	}
+	if !(c.Caps.SwarmShare > 0 && c.Caps.SwarmShare <= 1) {
+		errs.add("caps.swarmShare", "swarmShare", "must be in ]0,1]")
+	}
+	c.Schedule.validate(errs)
 	return errs
 }
 

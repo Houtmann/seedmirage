@@ -1,4 +1,4 @@
-{{define "title"}}Réglages{{end}}
+{{define "title"}}{{t "settings.title"}}{{end}}
 {{define "content"}}
 <div hx-ext="sse" sse-connect="/events">
   <div id="settings-form" hx-get="/settings/form" hx-trigger="sse:config.changed" hx-swap="innerHTML">{{template "settingsform" .Data}}</div>
@@ -7,7 +7,7 @@
 {{end}}
 {{define "settingsform"}}
 <form method="post" action="/settings" hx-post="/settings" hx-target="#settings-form" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]" class="flex flex-col gap-4">
-  <h1 class="text-xl font-semibold">Réglages</h1>
+  <h1 class="text-xl font-semibold">{{t "settings.title"}}</h1>
   {{if .Error}}<div class="alert alert-error" role="alert">{{.Error}}</div>{{end}}
   {{range .Sections}}
   <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-{{.ID}}">
@@ -25,14 +25,14 @@
           {{else}}
           <label class="font-medium"{{if ne .Kind "hourly"}} for="f-{{.Name}}"{{end}}>{{.Label}}</label>
           {{if eq .Kind "hourly"}}
-          <div class="flex flex-wrap gap-2" role="group" aria-label="Préréglages du planning">
+          <div class="flex flex-wrap gap-2" role="group" aria-label="{{t "settings.presetsAria"}}">
             {{range .Presets}}<button type="button" class="btn btn-xs btn-outline" data-hourly-preset="{{.Values}}">{{.Label}}</button>{{end}}
           </div>
           <div class="grid grid-cols-4 gap-x-3 gap-y-2 sm:grid-cols-6 lg:grid-cols-12" data-hourly>
             {{$name := .Name}}{{range .Hours}}{{$h := .}}
             <label class="flex flex-col items-center gap-0.5 text-xs">
               <span class="opacity-70">{{$h.Label}}</span>
-              <input type="range" class="range range-xs w-full" name="{{$name}}" min="0" max="2" step="0.05" value="{{$h.Value}}" aria-label="Coefficient à {{$h.Label}}" data-hour>
+              <input type="range" class="range range-xs w-full" name="{{$name}}" min="0" max="2" step="0.05" value="{{$h.Value}}" aria-label="{{t "settings.hourAria" $h.Label}}" data-hour>
               <output class="tabular-nums">{{$h.Value}}</output>
             </label>
             {{end}}
@@ -56,6 +56,6 @@
     </div>
   </section>
   {{end}}
-  <div><button type="submit" class="btn btn-primary">Enregistrer et appliquer</button></div>
+  <div><button type="submit" class="btn btn-primary">{{t "settings.save"}}</button></div>
 </form>
 {{end}}

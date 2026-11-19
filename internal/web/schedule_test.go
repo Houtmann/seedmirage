@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"seedmirage/internal/config"
+	"seedmirage/internal/i18n"
 )
 
 func TestSettingsSchedulePageShowsGridAndPresets(t *testing.T) {
@@ -84,7 +85,7 @@ func TestDashboardShowsPause(t *testing.T) {
 	e := newDashEnv(t)
 	snap := e.be.Snapshot()
 	snap.PausedUntil = time.Date(2026, 11, 19, 13, 0, 0, 0, time.UTC)
-	html, err := e.srv.renderFragment("dash", e.srv.buildDash(snap))
+	html, err := e.srv.renderFragment(i18n.FR, "dash", e.srv.buildDash(i18n.FR, snap))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +93,7 @@ func TestDashboardShowsPause(t *testing.T) {
 		t.Errorf("dashboard lacks the pause line: %s", html)
 	}
 	snap.PausedUntil = time.Time{}
-	if html, _ = e.srv.renderFragment("dash", e.srv.buildDash(snap)); strings.Contains(html, "En pause") {
+	if html, _ = e.srv.renderFragment(i18n.FR, "dash", e.srv.buildDash(i18n.FR, snap)); strings.Contains(html, "En pause") {
 		t.Error("pause line shown without pause")
 	}
 }
@@ -110,7 +111,7 @@ func TestFormatPausedUntil(t *testing.T) {
 		{time.Date(2026, 6, 1, 23, 30, 0, 0, paris), "23:30"},
 		{time.Date(2026, 6, 2, 2, 0, 0, 0, paris), "02:00 (demain)"},
 	} {
-		if got := formatPausedUntil(c.until, now); got != c.want {
+		if got := formatPausedUntil(i18n.FR, c.until, now); got != c.want {
 			t.Errorf("formatPausedUntil(%v) = %q, want %q", c.until, got, c.want)
 		}
 	}

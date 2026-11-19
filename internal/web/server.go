@@ -23,6 +23,7 @@ import (
 
 	"seedmirage/internal/clock"
 	"seedmirage/internal/config"
+	"seedmirage/internal/i18n"
 )
 
 //go:embed templates/*.html
@@ -64,8 +65,8 @@ type Server struct {
 	log    *slog.Logger
 	clock  clock.Clock
 	auth   *auth
-	pages  map[string]*template.Template
-	assets map[string]string // static file name -> content hash
+	pages  map[string]*template.Template // "<lang>/<page>"
+	assets map[string]string             // static file name -> content hash
 	static http.Handler
 	hosts  map[string]bool
 	// started is the creation time of the server (uptime of /status).
@@ -133,16 +134,23 @@ func New(cfg config.Startup, deps Deps) (*Server, error) {
 	}
 	s.static = http.StripPrefix("/static/", http.FileServerFS(sub))
 
-	funcs := template.FuncMap{"asset": s.assetURL}
 	s.pages = map[string]*template.Template{}
-	for _, name := range pageNames {
-		t, err := template.New(name).Funcs(funcs).ParseFS(templatesFS, "templates/layout.html", "templates/dash.html", "templates/"+name+".html")
-		if err != nil {
-			return nil, fmt.Errorf("parse template %s: %w", name, err)
+	for _, lang := range i18n.Supported() {
+		funcs := template.FuncMap{"asset": s.assetURL, "t": tFunc(lang), "tn": tnFunc(lang), "th": thFunc(lang)}
+		for _, name := range pageNames {
+			t, err := template.New(name).Funcs(funcs).ParseFS(templatesFS, "templates/layout.html", "templates/dash.html", "templates/"+name+".html")
+			if err != nil {
+				return nil, fmt.Errorf("parse template %s: %w", name, err)
+			}
+			s.pages[string(lang)+"/"+name] = t
 		}
-		s.pages[name] = t
 	}
 	return s, nil
+}
+
+// page returns the parsed template set of a page in lang.
+func (s *Server) page(lang i18n.Lang, name string) *template.Template {
+	return s.pages[string(lang)+"/"+name]
 }
 
 func (s *Server) assetURL(name string) (string, error) {
@@ -162,6 +170,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	mux.HandleFunc("GET /static/", s.serveStatic)
 	mux.HandleFunc("GET /{$}", s.home)
+	mux.Handle("POST /lang", s.protect(http.HandlerFunc(s.setLang)))
 	if s.deps.Engine != nil {
 		mux.Handle("GET /events", s.protect(http.HandlerFunc(s.events)))
 		mux.Handle("POST /seed/start", s.protect(s.seedAction(true)))
@@ -203,15 +212,20 @@ type pageData struct {
 	Nav       bool
 	HXHeaders string // JSON for hx-headers (CSRF token)
 	Data      any
+	Lang      string       // <html lang>
+	Langs     []langOption // language selector
+	Path      string       // current path and query: where POST /lang returns to
 }
 
 func (s *Server) newPageData(r *http.Request, nav bool) pageData {
-	pd := pageData{Version: s.deps.Version, Nav: nav}
+	lang := s.langOf(r)
+	pd := pageData{Version: s.deps.Version, Nav: nav, Lang: string(lang), Langs: langOptions(lang)}
 	session := ""
 	if c, err := r.Cookie(SessionCookie); err == nil {
 		session = c.Value
 	}
 	if nav {
+		pd.Path = r.URL.RequestURI()
 		b, _ := json.Marshal(map[string]string{CSRFHeader: s.auth.csrfToken(session)})
 		pd.HXHeaders = string(b)
 	}
@@ -219,8 +233,12 @@ func (s *Server) newPageData(r *http.Request, nav bool) pageData {
 }
 
 func (s *Server) render(w http.ResponseWriter, status int, name string, data pageData) {
-	t, ok := s.pages[name]
+	lang, ok := i18n.Parse(data.Lang)
 	if !ok {
+		lang = i18n.Default
+	}
+	t := s.page(lang, name)
+	if t == nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -260,7 +278,7 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	}
 	pd := s.newPageData(r, true)
 	if s.deps.Engine != nil {
-		pd.Data = s.buildDash(s.deps.Engine.Snapshot())
+		pd.Data = s.buildDash(s.langOf(r), s.deps.Engine.Snapshot())
 	}
 	s.render(w, http.StatusOK, "home", pd)
 }

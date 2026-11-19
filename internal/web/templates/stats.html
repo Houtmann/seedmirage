@@ -1,29 +1,29 @@
-{{define "title"}}Statistiques{{end}}
+{{define "title"}}{{t "stats.title"}}{{end}}
 {{define "content"}}
 <link rel="stylesheet" href="{{asset "uplot.min.css"}}">
 <script src="{{asset "uplot.iife.min.js"}}" defer></script>
 <script src="{{asset "stats.js"}}" defer></script>
-<div id="stats" class="grid grid-cols-1 gap-4 min-w-0">
+<div id="stats" class="grid grid-cols-1 gap-4 min-w-0" data-units="{{.Data.Units}}" data-decimal="{{.Data.Decimal}}" data-label-upload="{{t "stats.seriesUpload"}}" data-label-speed="{{t "stats.seriesSpeed"}}">
   <section class="card bg-base-100 shadow-sm min-w-0">
     <div class="card-body gap-3 p-3 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h1 class="card-title text-base">Upload par heure</h1>
-        <div role="group" class="join" aria-label="Période">
-          <button type="button" class="btn btn-sm join-item btn-primary" data-range="24h" aria-pressed="true">24 h</button>
-          <button type="button" class="btn btn-sm join-item" data-range="7d" aria-pressed="false">7 j</button>
-          <button type="button" class="btn btn-sm join-item" data-range="30d" aria-pressed="false">30 j</button>
+        <h1 class="card-title text-base">{{t "stats.hours.title"}}</h1>
+        <div role="group" class="join" aria-label="{{t "stats.period"}}">
+          <button type="button" class="btn btn-sm join-item btn-primary" data-range="24h" aria-pressed="true">{{t "stats.range.24h"}}</button>
+          <button type="button" class="btn btn-sm join-item" data-range="7d" aria-pressed="false">{{t "stats.range.7d"}}</button>
+          <button type="button" class="btn btn-sm join-item" data-range="30d" aria-pressed="false">{{t "stats.range.30d"}}</button>
         </div>
       </div>
-      <div id="chart-hours" class="w-full min-w-0 overflow-hidden" role="img" aria-label="Octets envoyés par heure"></div>
-      <p id="hours-empty" class="text-sm opacity-70 hidden">Aucun upload enregistré sur cette période.</p>
-      <p id="stats-error" class="text-sm text-error hidden" role="alert">Impossible de charger les données.</p>
+      <div id="chart-hours" class="w-full min-w-0 overflow-hidden" role="img" aria-label="{{t "stats.hours.aria"}}"></div>
+      <p id="hours-empty" class="text-sm opacity-70 hidden">{{t "stats.hours.empty"}}</p>
+      <p id="stats-error" class="text-sm text-error hidden" role="alert">{{t "stats.error"}}</p>
     </div>
   </section>
 
   <section class="card bg-base-100 shadow-sm min-w-0">
     <div class="card-body gap-3 p-3 sm:p-6">
-      <h2 class="card-title text-base">Vitesse globale (10 dernières minutes)</h2>
-      <div id="chart-speed" class="w-full min-w-0 overflow-hidden" role="img" aria-label="Vitesse d'envoi globale"></div>
+      <h2 class="card-title text-base">{{t "stats.speed.title"}}</h2>
+      <div id="chart-speed" class="w-full min-w-0 overflow-hidden" role="img" aria-label="{{t "stats.speed.aria"}}"></div>
       <div hx-ext="sse" sse-connect="/events"><span id="speed-feed" class="hidden" sse-swap="speed.point" hx-swap="innerHTML"></span></div>
     </div>
   </section>
@@ -31,42 +31,42 @@
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 min-w-0">
     <section class="card bg-base-100 shadow-sm min-w-0">
       <div class="card-body gap-3 p-3 sm:p-6">
-        <h2 class="card-title text-base">Ratio global</h2>
+        <h2 class="card-title text-base">{{t "stats.ratio.title"}}</h2>
         <p class="text-3xl font-semibold">{{.Data.Ratio}}</p>
-        <p class="text-xs opacity-70">Upload {{.Data.Scope}} rapporté à la taille des torrents actifs et en attente.</p>
+        <p class="text-xs opacity-70">{{t .Data.ScopeKey}}</p>
       </div>
     </section>
     <section class="card bg-base-100 shadow-sm min-w-0">
       <div class="card-body gap-3 p-3 sm:p-6">
-        <h2 class="card-title text-base">Top 10 par upload cumulé</h2>
+        <h2 class="card-title text-base">{{t "stats.top.title"}}</h2>
         {{if .Data.Top}}
         <div class="overflow-x-auto">
           <table class="table table-sm">
-            <thead><tr><th>Torrent</th><th class="text-right">Uploadé</th></tr></thead>
+            <thead><tr><th>{{t "stats.top.torrent"}}</th><th class="text-right">{{t "stats.top.uploaded"}}</th></tr></thead>
             <tbody>
-              {{range .Data.Top}}<tr><td class="break-words"><a class="link link-hover" href="/torrents/{{.Hash}}">{{.Name}}</a>{{if eq .Status "archived"}} <span class="badge badge-sm">archivé</span>{{end}}</td><td class="text-right whitespace-nowrap">{{.Total}}</td></tr>{{end}}
+              {{range .Data.Top}}<tr><td class="break-words"><a class="link link-hover" href="/torrents/{{.Hash}}">{{.Name}}</a>{{if eq .Status "archived"}} <span class="badge badge-sm">{{t "stats.top.archived"}}</span>{{end}}</td><td class="text-right whitespace-nowrap">{{.Total}}</td></tr>{{end}}
             </tbody>
           </table>
         </div>
-        {{else}}<p class="text-sm opacity-70">Aucun upload pour le moment.</p>{{end}}
+        {{else}}<p class="text-sm opacity-70">{{t "stats.top.empty"}}</p>{{end}}
       </div>
     </section>
   </div>
 
   <section class="card bg-base-100 shadow-sm min-w-0">
     <div class="card-body gap-3 p-3 sm:p-6">
-      <h2 class="card-title text-base">Annonces par tracker</h2>
-      <p class="text-xs opacity-70">Depuis le démarrage de seedmirage (non conservé entre deux lancements).</p>
+      <h2 class="card-title text-base">{{t "stats.trackers.title"}}</h2>
+      <p class="text-xs opacity-70">{{t "stats.trackers.note"}}</p>
       {{if .Data.Trackers}}
       <div class="overflow-x-auto">
         <table class="table table-sm">
-          <thead><tr><th>Hôte</th><th class="text-right">Annonces</th><th class="text-right">Échecs</th><th class="text-right">Taux d'échec</th></tr></thead>
+          <thead><tr><th>{{t "stats.trackers.host"}}</th><th class="text-right">{{t "stats.trackers.announces"}}</th><th class="text-right">{{t "stats.trackers.failures"}}</th><th class="text-right">{{t "stats.trackers.rate"}}</th></tr></thead>
           <tbody>
             {{range .Data.Trackers}}<tr><td class="break-all">{{.Host}}</td><td class="text-right">{{.Announces}}</td><td class="text-right">{{.Failures}}</td><td class="text-right">{{.Rate}}</td></tr>{{end}}
           </tbody>
         </table>
       </div>
-      {{else}}<p class="text-sm opacity-70">Aucune annonce depuis le démarrage.</p>{{end}}
+      {{else}}<p class="text-sm opacity-70">{{t "stats.trackers.empty"}}</p>{{end}}
     </div>
   </section>
 </div>

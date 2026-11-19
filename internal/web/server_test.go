@@ -64,6 +64,7 @@ func newEnv(t *testing.T, mutate func(*config.Startup)) *testEnv {
 
 func (e *testEnv) do(method, target string, mod func(*http.Request)) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, target, nil)
+	r.Header.Set("Accept-Language", "fr")
 	r.Host = "127.0.0.1:7070"
 	if mod != nil {
 		mod(r)

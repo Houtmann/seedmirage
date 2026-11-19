@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"seedmirage/internal/events"
+	"seedmirage/internal/i18n"
 )
 
 const (
@@ -78,21 +79,21 @@ func flush(rc *http.ResponseController) error {
 }
 
 // toastFor maps a bus event to a toast, ok=false if it does not warrant one.
-func toastFor(ev events.Event) (toastView, bool) {
+func toastFor(lang i18n.Lang, ev events.Event) (toastView, bool) {
 	switch ev.Type {
 	case events.AnnounceFailed:
-		msg := "Annonce échouée"
+		msg := i18n.T(lang, "toast.announceFailed")
 		if h := trackerHost(ev.Tracker); h != "" {
-			msg += " (" + h + ")"
+			msg = i18n.T(lang, "toast.announceFailedHost", h)
 		}
 		if ev.Detail != "" {
-			msg += " : " + sanitizeError(ev.Detail)
+			msg = i18n.T(lang, "common.withDetail", msg, sanitizeError(ev.Detail))
 		}
 		return toastView{Kind: "error", Text: msg}, true
 	case events.AnnounceTooMany:
-		return toastView{Kind: "warning", Text: fmt.Sprintf("Trop d'échecs d'annonce (%d) : torrent écarté", ev.Value)}, true
+		return toastView{Kind: "warning", Text: i18n.T(lang, "toast.tooManyFailures", ev.Value)}, true
 	case events.ConfigInvalid:
-		return toastView{Kind: "error", Text: "Configuration invalide : " + sanitizeError(ev.Detail)}, true
+		return toastView{Kind: "error", Text: i18n.T(lang, "toast.configInvalid", sanitizeError(ev.Detail))}, true
 	}
 	return toastView{}, false
 }
@@ -100,6 +101,7 @@ func toastFor(ev events.Event) (toastView, bool) {
 // events serves GET /events: one bus subscription per client, the full state on
 // connection, then coalesced refreshes, toasts and heartbeats.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
+	lang := s.langOf(r) // fixed for the life of the stream: a language change reloads the page
 	rc := http.NewResponseController(w)
 	ch, cancel := s.deps.Engine.Bus().Subscribe(sseBuffer)
 	s.subs.Add(1)
@@ -117,7 +119,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	if err := s.sendState(w, rc, "state"); err != nil {
+	if err := s.sendState(lang, w, rc, "state"); err != nil {
 		return
 	}
 
@@ -154,8 +156,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
-			if t, ok := toastFor(ev); ok {
-				html, err := s.renderFragment("toast", t)
+			if t, ok := toastFor(lang, ev); ok {
+				html, err := s.renderFragment(lang, "toast", t)
 				if err != nil {
 					s.log.Error("render toast", "err", err)
 					continue
@@ -181,7 +183,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 				name = "state"
 			}
 			stateDirty, speedDirty = false, false
-			if err := s.sendState(w, rc, name); err != nil {
+			if err := s.sendState(lang, w, rc, name); err != nil {
 				return
 			}
 		case <-beat.C():
@@ -198,8 +200,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) sendState(w http.ResponseWriter, rc *http.ResponseController, name string) error {
-	html, err := s.dashHTML()
+func (s *Server) sendState(lang i18n.Lang, w http.ResponseWriter, rc *http.ResponseController, name string) error {
+	html, err := s.dashHTML(lang)
 	if err != nil {
 		s.log.Error("render dashboard", "err", err)
 		return nil // keep the stream; the next refresh retries

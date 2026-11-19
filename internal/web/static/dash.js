@@ -10,17 +10,24 @@
       window.location.href = row.getAttribute("data-href");
     }
   });
+  // Textes rendus par le serveur dans la langue de la page : <body data-t-in="in %s" data-t-imminent="imminent">.
+  function text(name, fallback) {
+    var v = document.body ? document.body.getAttribute(name) : null;
+    return v || fallback;
+  }
   function fmt(sec) {
     if (sec <= 0) {
-      return "imminent";
+      return text("data-t-imminent", "imminent");
     }
+    var d;
     if (sec < 60) {
-      return "dans " + sec + " s";
+      d = sec + " s";
+    } else if (sec < 3600) {
+      d = Math.floor(sec / 60) + " min";
+    } else {
+      d = Math.floor(sec / 3600) + " h " + ("0" + Math.floor((sec % 3600) / 60)).slice(-2);
     }
-    if (sec < 3600) {
-      return "dans " + Math.floor(sec / 60) + " min";
-    }
-    return "dans " + Math.floor(sec / 3600) + " h " + ("0" + Math.floor((sec % 3600) / 60)).slice(-2);
+    return text("data-t-in", "in %s").replace("%s", d);
   }
   setInterval(function () {
     var now = Date.now() / 1000;

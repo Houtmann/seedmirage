@@ -7,6 +7,11 @@
   }
   var WINDOW = 600; // secondes de l'historique de vitesse
   var HEIGHT = 220;
+  // Unités, séparateur décimal et libellés rendus par le serveur (data-*) dans la langue de la page.
+  var UNITS = (root.getAttribute("data-units") || "B,KiB,MiB,GiB,TiB").split(",");
+  var DECIMAL = root.getAttribute("data-decimal") || ".";
+  var LABEL_UPLOAD = root.getAttribute("data-label-upload") || "Upload";
+  var LABEL_SPEED = root.getAttribute("data-label-speed") || "Speed";
   var charts = { hours: null, speed: null };
   var last = null; // dernières données reçues
   var range = "24h";
@@ -15,14 +20,14 @@
     if (v == null) {
       return "";
     }
-    var units = ["o", "Kio", "Mio", "Gio", "Tio"];
+    var units = UNITS;
     var i = 0;
     var x = Math.abs(v);
     while (x >= 1024 && i < units.length - 1) {
       x /= 1024;
       i++;
     }
-    var s = x >= 100 || i === 0 ? Math.round(x).toString() : x.toFixed(1).replace(".", ",");
+    var s = x >= 100 || i === 0 ? Math.round(x).toString() : x.toFixed(1).replace(".", DECIMAL);
     return s + " " + units[i];
   }
 
@@ -52,7 +57,27 @@
   function axes(p, unit) {
     var common = { stroke: p.text, grid: { stroke: p.grid, width: 1 }, ticks: { stroke: p.grid, width: 1 }, font: "11px sans-serif" };
     return [
-      Object.assign({}, common, { space: 60 }),
+      Object.assign({}, common, {
+        space: 60,
+        // Dates et heures dans la langue de la page (<html lang>), pas dans celle d'uPlot.
+        values: function (u, splits, axisIdx, foundSpace, foundIncr) {
+          var opts = { hour: "2-digit", minute: "2-digit" };
+          if (foundIncr >= 86400) {
+            opts = { day: "2-digit", month: "2-digit" };
+          } else if (foundIncr < 60) {
+            opts.second = "2-digit";
+          }
+          var f;
+          try {
+            f = new Intl.DateTimeFormat(document.documentElement.lang || undefined, opts);
+          } catch (e) {
+            return splits.map(String);
+          }
+          return splits.map(function (t) {
+            return f.format(new Date(t * 1000));
+          });
+        },
+      }),
       Object.assign({}, common, {
         size: 64,
         values: function (u, vals) {
@@ -71,7 +96,7 @@
     }
     var p = palette();
     var s = {
-      label: unit ? "Vitesse" : "Upload",
+      label: unit ? LABEL_SPEED : LABEL_UPLOAD,
       stroke: p.line,
       width: 2,
       fill: bars ? p.line : undefined,

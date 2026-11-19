@@ -1,4 +1,4 @@
-{{define "title"}}Tableau de bord{{end}}
+{{define "title"}}{{t "dash.title"}}{{end}}
 {{define "content"}}
 {{if .Data}}
 <div hx-ext="sse" sse-connect="/events">
@@ -8,9 +8,9 @@
 {{else}}
 <section class="card bg-base-100 shadow-sm">
   <div class="card-body">
-    <h1 class="card-title">Tableau de bord</h1>
-    <p>seedmirage est en cours d'exécution (version {{.Version}}).</p>
-    <p class="text-sm opacity-70">Le moteur n'est pas branché sur l'interface.</p>
+    <h1 class="card-title">{{t "dash.title"}}</h1>
+    <p>{{t "home.running" .Version}}</p>
+    <p class="text-sm opacity-70">{{t "home.noEngine"}}</p>
   </div>
 </section>
 {{end}}

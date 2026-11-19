@@ -54,6 +54,7 @@ func newUpEnv(t *testing.T) *upEnv {
 
 func (e *upEnv) do(method, target, contentType string, body io.Reader, csrf bool) *httptest.ResponseRecorder {
 	r := httptest.NewRequest(method, target, body)
+	r.Header.Set("Accept-Language", "fr")
 	r.Host = "127.0.0.1:7070"
 	r.AddCookie(&http.Cookie{Name: SessionCookie, Value: e.srv.auth.sessionValue()}) //nolint:gosec // test cookie
 	if contentType != "" {

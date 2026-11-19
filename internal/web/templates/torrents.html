@@ -1,14 +1,14 @@
-{{define "title"}}Torrents{{end}}
+{{define "title"}}{{t "torrents.title"}}{{end}}
 {{define "content"}}
 <section class="card bg-base-100 shadow-sm">
   <div class="card-body gap-3 p-3 sm:p-6">
-    <h1 class="card-title">Torrents</h1>
+    <h1 class="card-title">{{t "torrents.title"}}</h1>
     <div id="toasts" class="toast toast-end z-50" role="status" aria-live="polite"></div>
     {{if .Data.Manage}}
     <form id="upload-form" hx-post="/torrents/upload" hx-encoding="multipart/form-data" hx-target="#upload-result" hx-swap="innerHTML" hx-trigger="change, submit" class="flex flex-wrap items-center gap-2 rounded-box border-2 border-dashed border-base-300 p-3">
-      <label class="text-sm" for="upload-files">Ajouter des .torrent (glisser-déposer ou choisir, 10 Mo et 50 fichiers au plus) :</label>
+      <label class="text-sm" for="upload-files">{{t "torrents.upload.label"}}</label>
       <input id="upload-files" type="file" name="files" multiple accept=".torrent,application/x-bittorrent" class="file-input file-input-sm w-full max-w-md">
-      <button type="submit" class="btn btn-sm btn-primary">Ajouter</button>
+      <button type="submit" class="btn btn-sm btn-primary">{{t "torrents.upload.submit"}}</button>
     </form>
     <div id="upload-result" aria-live="polite"></div>
     {{end}}
@@ -18,27 +18,27 @@
     <form method="get" action="/torrents" class="flex flex-wrap items-center gap-2" role="search">
       <input type="hidden" name="tab" value="{{.Data.Tab}}">
       {{if .Data.Sort}}<input type="hidden" name="sort" value="{{.Data.Sort}}"><input type="hidden" name="dir" value="{{.Data.Dir}}">{{end}}
-      <label class="sr-only" for="q">Filtrer par nom</label>
-      <input id="q" type="search" name="q" value="{{.Data.Query}}" placeholder="Filtrer par nom ou info_hash" class="input input-sm input-bordered w-full max-w-xs">
-      <button type="submit" class="btn btn-sm">Filtrer</button>
-      {{if .Data.Query}}<a class="btn btn-sm btn-ghost" href="/torrents?tab={{.Data.Tab}}">Effacer</a>{{end}}
+      <label class="sr-only" for="q">{{t "torrents.filter.label"}}</label>
+      <input id="q" type="search" name="q" value="{{.Data.Query}}" placeholder="{{t "torrents.filter.placeholder"}}" class="input input-sm input-bordered w-full max-w-xs">
+      <button type="submit" class="btn btn-sm">{{t "torrents.filter.submit"}}</button>
+      {{if .Data.Query}}<a class="btn btn-sm btn-ghost" href="/torrents?tab={{.Data.Tab}}">{{t "torrents.filter.clear"}}</a>{{end}}
     </form>
     {{if .Data.Rows}}
     <div class="overflow-x-auto">
       <table class="table table-sm">
         <thead>
           <tr>
-            <th><a class="link link-hover" href="{{index .Data.SortURLs "name"}}">Nom</a></th>
-            <th><a class="link link-hover" href="{{index .Data.SortURLs "size"}}">Taille</a></th>
+            <th><a class="link link-hover" href="{{index .Data.SortURLs "name"}}">{{t "torrents.col.name"}}</a></th>
+            <th><a class="link link-hover" href="{{index .Data.SortURLs "size"}}">{{t "torrents.col.size"}}</a></th>
             {{if .Data.Archived}}
-            <th>Raison</th><th>Date</th>
+            <th>{{t "torrents.col.reason"}}</th><th>{{t "torrents.col.date"}}</th>
             {{else}}
-            <th>Tracker</th><th class="text-right">S / <a class="link link-hover" href="{{index .Data.SortURLs "leechers"}}">L</a></th>
+            <th>{{t "torrents.col.tracker"}}</th><th class="text-right">S / <a class="link link-hover" href="{{index .Data.SortURLs "leechers"}}">L</a></th>
             {{end}}
-            <th class="text-right"><a class="link link-hover" href="{{index .Data.SortURLs "uploaded"}}">Uploadé (total)</a></th>
-            <th class="text-right">Ratio</th>
-            {{if not .Data.Archived}}<th>État</th>{{end}}
-            {{if .Data.Manage}}<th><span class="sr-only">Actions</span></th>{{end}}
+            <th class="text-right"><a class="link link-hover" href="{{index .Data.SortURLs "uploaded"}}">{{t "torrents.col.uploaded"}}</a></th>
+            <th class="text-right">{{t "torrents.col.ratio"}}</th>
+            {{if not .Data.Archived}}<th>{{t "torrents.col.state"}}</th>{{end}}
+            {{if .Data.Manage}}<th><span class="sr-only">{{t "torrents.col.actions"}}</span></th>{{end}}
           </tr>
         </thead>
         <tbody>
@@ -60,10 +60,10 @@
             {{if $.Data.Manage}}
             <td class="whitespace-nowrap">
               {{if $.Data.Archived}}
-              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/restore" hx-swap="none">Restaurer</button>
-              <button type="button" class="btn btn-xs btn-error btn-outline" hx-post="/torrents/{{.Hash}}/delete" hx-swap="none" hx-confirm="Supprimer définitivement « {{.Name}} » ? Le fichier .torrent sera effacé.">Supprimer</button>
+              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/restore" hx-swap="none">{{t "torrents.restore"}}</button>
+              <button type="button" class="btn btn-xs btn-error btn-outline" hx-post="/torrents/{{.Hash}}/delete" hx-swap="none" hx-confirm="{{t "torrents.confirmDelete" .Name}}">{{t "torrents.delete"}}</button>
               {{else}}
-              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/archive" hx-swap="none">Archiver</button>
+              <button type="button" class="btn btn-xs" hx-post="/torrents/{{.Hash}}/archive" hx-swap="none">{{t "torrents.archive"}}</button>
               {{end}}
             </td>
             {{end}}
@@ -72,22 +72,22 @@
         </tbody>
       </table>
     </div>
-    <nav class="flex items-center justify-between gap-2 text-sm" aria-label="Pagination">
-      <span class="opacity-70">{{.Data.Total}} torrent(s) · page {{.Data.Page}} / {{.Data.Pages}}</span>
+    <nav class="flex items-center justify-between gap-2 text-sm" aria-label="{{t "torrents.pagination"}}">
+      <span class="opacity-70">{{tn "torrents.count" .Data.Total .Data.Total}} · {{t "torrents.page" .Data.Page .Data.Pages}}</span>
       <span class="join">
-        {{if .Data.PrevURL}}<a class="btn btn-sm join-item" href="{{.Data.PrevURL}}" rel="prev">Précédent</a>{{end}}
-        {{if .Data.NextURL}}<a class="btn btn-sm join-item" href="{{.Data.NextURL}}" rel="next">Suivant</a>{{end}}
+        {{if .Data.PrevURL}}<a class="btn btn-sm join-item" href="{{.Data.PrevURL}}" rel="prev">{{t "torrents.prev"}}</a>{{end}}
+        {{if .Data.NextURL}}<a class="btn btn-sm join-item" href="{{.Data.NextURL}}" rel="next">{{t "torrents.next"}}</a>{{end}}
       </span>
     </nav>
     {{else}}
-    <p class="text-sm opacity-70">Aucun torrent{{if .Data.Query}} ne correspond au filtre{{end}}.</p>
+    <p class="text-sm opacity-70">{{if .Data.Query}}{{t "torrents.emptyFiltered"}}{{else}}{{t "torrents.empty"}}{{end}}</p>
     {{end}}
   </div>
 </section>
 {{end}}
 
 {{define "uploadresult"}}<ul class="text-sm space-y-1">
-  {{range .Results}}<li class="{{if .OK}}text-success{{else}}text-error{{end}} break-all">{{if .OK}}<a class="link" href="/torrents/{{.Hash}}">{{.Name}}</a>{{else}}{{.Name}}{{end}} : {{.Message}}</li>
+  {{range .Results}}<li class="{{if .OK}}text-success{{else}}text-error{{end}} break-all">{{if .OK}}<a class="link" href="/torrents/{{.Hash}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}{{t "common.colon"}}{{.Message}}</li>
   {{end}}
 </ul>
-{{if .Added}}<p class="text-sm mt-1"><a class="link" href="/torrents">Actualiser la liste</a></p>{{end}}{{end}}
+{{if .Added}}<p class="text-sm mt-1"><a class="link" href="/torrents">{{t "torrents.upload.refresh"}}</a></p>{{end}}{{end}}

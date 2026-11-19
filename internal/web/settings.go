@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 	"net/netip"
@@ -13,6 +12,7 @@ import (
 
 	"seedmirage/internal/config"
 	"seedmirage/internal/engine"
+	"seedmirage/internal/i18n"
 )
 
 // maxSettingsBody bounds the size of a settings form.
@@ -28,17 +28,27 @@ type configBackend interface {
 
 // fieldDef describes one input of the form. Name is the JSON key of the field
 // in config.json ("caps.lineMax" for the nested ones): the test of coverage
-// checks that every key of config.Config has an input.
+// checks that every key of config.Config has an input. Its label and help are
+// the catalog keys "settings.<Name>.label" and "settings.<Name>.help".
 type fieldDef struct {
-	Name, Label, Help, Kind string // Kind: number | text | select | checkbox | textarea | hourly
-	Step                    string
-	Options                 []optionView // for select (profile: filled at render time)
-	get                     func(c *config.Config) string
-	set                     func(c *config.Config, raw string) error
+	Name, Kind string // Kind: number | text | select | checkbox | textarea | hourly
+	Step       string
+	Options    []optionView // for select (profile: filled at render time)
+	get        func(c *config.Config) string
+	set        func(c *config.Config, raw string) error
 }
+
+// fieldMsg is a translatable field error: a catalog key and its arguments.
+type fieldMsg struct {
+	Key  string
+	Args []any
+}
+
+func (m fieldMsg) Error() string { return m.Key }
 
 type optionView struct {
 	Value, Label string
+	Key          string // catalog key of the label ("" : Label is shown as is)
 	Selected     bool
 }
 
@@ -73,18 +83,18 @@ type settingsView struct {
 }
 
 type sectionDef struct {
-	ID, Title, Intro string
-	Fields           []fieldDef
+	ID     string
+	Fields []fieldDef
 }
 
-func intField(name, label, help string, get func(*config.Config) *int) fieldDef {
+func intField(name string, get func(*config.Config) *int) fieldDef {
 	return fieldDef{
-		Name: name, Label: label, Help: help, Kind: "number", Step: "1",
+		Name: name, Kind: "number", Step: "1",
 		get: func(c *config.Config) string { return strconv.Itoa(*get(c)) },
 		set: func(c *config.Config, raw string) error {
 			n, err := strconv.Atoi(strings.TrimSpace(raw))
 			if err != nil {
-				return errors.New("nombre entier attendu")
+				return fieldMsg{Key: "err.int"}
 			}
 			*get(c) = n
 			return nil
@@ -92,14 +102,14 @@ func intField(name, label, help string, get func(*config.Config) *int) fieldDef 
 	}
 }
 
-func floatField(name, label, help string, get func(*config.Config) *float64) fieldDef {
+func floatField(name string, get func(*config.Config) *float64) fieldDef {
 	return fieldDef{
-		Name: name, Label: label, Help: help, Kind: "number", Step: "any",
+		Name: name, Kind: "number", Step: "any",
 		get: func(c *config.Config) string { return strconv.FormatFloat(*get(c), 'f', -1, 64) },
 		set: func(c *config.Config, raw string) error {
 			f, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(raw), ",", "."), 64)
 			if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-				return errors.New("nombre attendu")
+				return fieldMsg{Key: "err.number"}
 			}
 			*get(c) = f
 			return nil
@@ -107,9 +117,9 @@ func floatField(name, label, help string, get func(*config.Config) *float64) fie
 	}
 }
 
-func boolField(name, label, help string, get func(*config.Config) *bool) fieldDef {
+func boolField(name string, get func(*config.Config) *bool) fieldDef {
 	return fieldDef{
-		Name: name, Label: label, Help: help, Kind: "checkbox",
+		Name: name, Kind: "checkbox",
 		get: func(c *config.Config) string {
 			if *get(c) {
 				return "on"
@@ -120,9 +130,9 @@ func boolField(name, label, help string, get func(*config.Config) *bool) fieldDe
 	}
 }
 
-func selectField(name, label, help string, opts []optionView, get func(*config.Config) *string) fieldDef {
+func selectField(name string, opts []optionView, get func(*config.Config) *string) fieldDef {
 	return fieldDef{
-		Name: name, Label: label, Help: help, Kind: "select", Options: opts,
+		Name: name, Kind: "select", Options: opts,
 		get: func(c *config.Config) string { return *get(c) },
 		set: func(c *config.Config, raw string) error { *get(c) = raw; return nil },
 	}
@@ -134,18 +144,17 @@ func selectField(name, label, help string, opts []optionView, get func(*config.C
 //   - constant: 1 all day.
 //   - soirée: quiet night (0,3), low daytime (0,6-0,8), evening peak 19h-22h (1,6).
 //   - bureau: machine on at the office: low outside 8h-18h, two peaks 10h-12h and 14h-17h (1,4).
-func schedulePresets() []presetView {
+func schedulePresets(lang i18n.Lang) []presetView {
 	return []presetView{
-		{"Constant", "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"},
-		{"Soirée", "0.8,0.5,0.3,0.3,0.3,0.3,0.3,0.5,0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,0.8,0.8,1.2,1.6,1.6,1.6,1.6,1.2"},
-		{"Bureau", "0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.4,1,1.4,1.4,1.4,1,1,1.4,1.4,1.4,1.4,0.8,0.4,0.4,0.4,0.2,0.2"},
+		{i18n.T(lang, "settings.preset.constant"), "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1"},
+		{i18n.T(lang, "settings.preset.evening"), "0.8,0.5,0.3,0.3,0.3,0.3,0.3,0.5,0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,0.8,0.8,1.2,1.6,1.6,1.6,1.6,1.2"},
+		{i18n.T(lang, "settings.preset.office"), "0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.4,1,1.4,1.4,1.4,1,1,1.4,1.4,1.4,1.4,0.8,0.4,0.4,0.4,0.2,0.2"},
 	}
 }
 
 func hourlyField() fieldDef {
 	return fieldDef{
-		Name: "schedule.hourly", Label: "Coefficient par heure", Kind: "hourly",
-		Help: "Multiplie la vitesse du modèle (0 = silence, 1 = inchangée, 2 = double). Atteint à l'heure pile, interpolé entre deux heures.",
+		Name: "schedule.hourly", Kind: "hourly",
 		get: func(c *config.Config) string {
 			parts := make([]string, len(c.Schedule.Hourly))
 			for i, v := range c.Schedule.Hourly {
@@ -156,13 +165,13 @@ func hourlyField() fieldDef {
 		set: func(c *config.Config, raw string) error {
 			parts := strings.Split(raw, ",")
 			if len(parts) != len(c.Schedule.Hourly) {
-				return errors.New("24 coefficients attendus")
+				return fieldMsg{Key: "err.hours24"}
 			}
 			var h [24]float64
 			for i, p := range parts {
 				f, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
 				if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
-					return errors.New("coefficients numériques attendus")
+					return fieldMsg{Key: "err.hoursNumeric"}
 				}
 				h[i] = f
 			}
@@ -174,8 +183,7 @@ func hourlyField() fieldDef {
 
 func pausesField() fieldDef {
 	return fieldDef{
-		Name: "schedule.pauses", Label: "Pauses", Kind: "textarea",
-		Help: "Une par ligne : jour (lun, mar, mer, jeu, ven, sam, dim) puis plage HH:MM-HH:MM, par exemple « lun 22:00-23:30 ». Une plage qui passe minuit (« ven 23:00-02:00 ») se termine le lendemain. Les torrents sont arrêtés proprement pendant la pause, puis repris.",
+		Name: "schedule.pauses", Kind: "textarea",
 		get: func(c *config.Config) string {
 			lines := make([]string, len(c.Schedule.Pauses))
 			for i, p := range c.Schedule.Pauses {
@@ -191,14 +199,14 @@ func pausesField() fieldDef {
 				}
 				f := strings.Fields(line)
 				if len(f) != 2 {
-					return fmt.Errorf("ligne %d : « jour HH:MM-HH:MM » attendu", i+1)
+					return fieldMsg{Key: "err.pauseLine", Args: []any{i + 1}}
 				}
 				day, ok := config.CanonicalDay(f[0])
 				if !ok {
-					return fmt.Errorf("ligne %d : jour inconnu « %s »", i+1, f[0])
+					return fieldMsg{Key: "err.pauseDay", Args: []any{i + 1, f[0]}}
 				}
 				if _, _, err := config.ParseRange(f[1]); err != nil {
-					return fmt.Errorf("ligne %d : plage HH:MM-HH:MM attendue", i+1)
+					return fieldMsg{Key: "err.pauseRange", Args: []any{i + 1}}
 				}
 				out = append(out, config.Pause{Day: day, Range: f[1]})
 			}
@@ -208,26 +216,26 @@ func pausesField() fieldDef {
 	}
 }
 
-// settingsSections is the form layout.
+// settingsSections is the form layout. Titles and intros are the catalog keys
+// "settings.sec.<ID>.title" and ".intro".
 func settingsSections() []sectionDef {
 	return []sectionDef{
-		{ID: "speed", Title: "Vitesse", Intro: "Débit d'upload annoncé, en ko/s. Appliqué immédiatement.", Fields: []fieldDef{
-			intField("uploadRateMin", "Débit minimum (ko/s)", "Borne basse de la vitesse globale.", func(c *config.Config) *int { return &c.UploadRateMin }),
-			intField("uploadRateMax", "Débit maximum (ko/s)", "Borne haute ; doit être au moins égale au minimum.", func(c *config.Config) *int { return &c.UploadRateMax }),
-			selectField("speedModel", "Modèle de vitesse", "Lissé : variation continue et bruit par torrent ; uniforme : tirage aléatoire entre les bornes.",
-				[]optionView{{Value: config.SpeedModelSmooth, Label: "Lissé"}, {Value: config.SpeedModelUniform, Label: "Uniforme"}},
+		{ID: "speed", Fields: []fieldDef{
+			intField("uploadRateMin", func(c *config.Config) *int { return &c.UploadRateMin }),
+			intField("uploadRateMax", func(c *config.Config) *int { return &c.UploadRateMax }),
+			selectField("speedModel",
+				[]optionView{{Value: config.SpeedModelSmooth, Key: "settings.speedModel.opt.smooth"}, {Value: config.SpeedModelUniform, Key: "settings.speedModel.opt.uniform"}},
 				func(c *config.Config) *string { return &c.SpeedModel }),
 		}},
-		{ID: "torrents", Title: "Torrents", Intro: "Combien de torrents sont seedés et comment ils sont choisis.", Fields: []fieldDef{
-			intField("maxActiveTorrents", "Torrents actifs", "Nombre maximal de torrents annoncés en même temps. Le réduire arrête les plus récents.", func(c *config.Config) *int { return &c.MaxActiveTorrents }),
-			selectField("selection", "Choix des torrents", "Essaim : privilégie les torrents qui ont des leechers (scrape) ; aléatoire : tirage simple.",
-				[]optionView{{Value: config.SelectionSwarm, Label: "Selon l'essaim"}, {Value: config.SelectionRandom, Label: "Aléatoire"}},
+		{ID: "torrents", Fields: []fieldDef{
+			intField("maxActiveTorrents", func(c *config.Config) *int { return &c.MaxActiveTorrents }),
+			selectField("selection",
+				[]optionView{{Value: config.SelectionSwarm, Key: "settings.selection.opt.swarm"}, {Value: config.SelectionRandom, Key: "settings.selection.opt.random"}},
 				func(c *config.Config) *string { return &c.Selection }),
-			boolField("keepIdleTorrents", "Garder les torrents sans leecher", "Sinon, un torrent sans leecher est écarté.", func(c *config.Config) *bool { return &c.KeepIdleTorrents }),
+			boolField("keepIdleTorrents", func(c *config.Config) *bool { return &c.KeepIdleTorrents }),
 			{
-				Name: "rotateIdleAfter", Label: "Rotation des torrents inactifs", Kind: "text",
-				Help: "Durée sans leecher (« 6h », « 90m ») après laquelle un torrent est remplacé ; 0 = jamais. Demande « garder les torrents sans leecher » et le choix selon l'essaim.",
-				get:  func(c *config.Config) string { return time.Duration(c.RotateIdleAfter).String() },
+				Name: "rotateIdleAfter", Kind: "text",
+				get: func(c *config.Config) string { return time.Duration(c.RotateIdleAfter).String() },
 				set: func(c *config.Config, raw string) error {
 					raw = strings.TrimSpace(raw)
 					if raw == "0" {
@@ -236,78 +244,82 @@ func settingsSections() []sectionDef {
 					}
 					d, err := time.ParseDuration(raw)
 					if err != nil {
-						return errors.New("durée attendue, par exemple 6h ou 90m")
+						return fieldMsg{Key: "err.duration"}
 					}
 					c.RotateIdleAfter = config.Duration(d)
 					return nil
 				},
 			},
-			floatField("ratioTarget", "Ratio cible", "Un torrent qui atteint ce ratio est arrêté ; 0 = désactivé.", func(c *config.Config) *float64 { return &c.RatioTarget }),
-			selectField("ratioScope", "Ratio calculé sur", "La session en cours ou l'upload cumulé de tous les lancements.",
-				[]optionView{{Value: config.RatioScopeSession, Label: "La session"}, {Value: config.RatioScopeTotal, Label: "Le cumul"}},
+			floatField("ratioTarget", func(c *config.Config) *float64 { return &c.RatioTarget }),
+			selectField("ratioScope",
+				[]optionView{{Value: config.RatioScopeSession, Key: "settings.ratioScope.opt.session"}, {Value: config.RatioScopeTotal, Key: "settings.ratioScope.opt.total"}},
 				func(c *config.Config) *string { return &c.RatioScope }),
-			boolField("autoStart", "Démarrer au lancement", "Commence à seeder dès que « serve » démarre (au prochain lancement).", func(c *config.Config) *bool { return &c.AutoStart }),
+			boolField("autoStart", func(c *config.Config) *bool { return &c.AutoStart }),
 		}},
-		{ID: "client", Title: "Client émulé", Intro: "Changer de profil redémarre les annonces (un « stopped » est envoyé avec l'ancien client).", Fields: []fieldDef{
+		{ID: "client", Fields: []fieldDef{
 			{
-				Name: "profile", Label: "Profil", Kind: "select", Help: "Famille et version ; les plus récentes en premier.",
+				Name: "profile", Kind: "select",
 				get: func(c *config.Config) string { return c.Profile },
 				set: func(c *config.Config, raw string) error { c.Profile = strings.TrimSpace(raw); return nil },
 			},
 		}},
-		{ID: "network", Title: "Réseau", Intro: "Changer le port ou l'IP annoncée redémarre les annonces.", Fields: []fieldDef{
-			intField("port", "Port annoncé", "Entre 1 et 65535 ; 0 conserve le port actuel.", func(c *config.Config) *int { return &c.Port }),
+		{ID: "network", Fields: []fieldDef{
+			intField("port", func(c *config.Config) *int { return &c.Port }),
 			{
-				Name: "announceIP", Label: "IP annoncée", Kind: "text",
-				Help: "Vide : non envoyée (le tracker voit déjà votre IP).",
-				get:  func(c *config.Config) string { return c.AnnounceIP },
-				set:  func(c *config.Config, raw string) error { c.AnnounceIP = strings.TrimSpace(raw); return nil },
+				Name: "announceIP", Kind: "text",
+				get: func(c *config.Config) string { return c.AnnounceIP },
+				set: func(c *config.Config, raw string) error { c.AnnounceIP = strings.TrimSpace(raw); return nil },
 			},
 		}},
-		{ID: "realism", Title: "Réalisme", Intro: "Plafonds plausibles par torrent et téléchargement simulé.", Fields: []fieldDef{
-			intField("caps.perLeecherMax", "Plafond par leecher (ko/s)", "Vitesse maximale rapportée à un leecher ; 0 = sans plafond.", func(c *config.Config) *int { return &c.Caps.PerLeecherMax }),
-			intField("caps.lineMax", "Ligne montante déclarée (ko/s)", "Plafond de la vitesse globale ; 0 = illimité.", func(c *config.Config) *int { return &c.Caps.LineMax }),
-			floatField("caps.dailyRatioMax", "Ratio maximal par 24 h", "L'upload sur 24 h reste sous ce ratio multiplié par la taille ; 0 = désactivé.", func(c *config.Config) *float64 { return &c.Caps.DailyRatioMax }),
-			floatField("caps.swarmShare", "Part maximale de l'essaim", "Part de la demande de l'essaim qu'un torrent peut absorber, dans ]0 ; 1].", func(c *config.Config) *float64 { return &c.Caps.SwarmShare }),
-			boolField("simulateDownload", "Simuler un téléchargement", "Un torrent vu pour la première fois « télécharge » d'abord, puis seede. Ne vaut que pour les torrents ajoutés ensuite.", func(c *config.Config) *bool { return &c.SimulateDownload }),
-			intField("minDownloadRate", "Téléchargement minimum (ko/s)", "Vitesse de téléchargement simulée, borne basse.", func(c *config.Config) *int { return &c.MinDownloadRate }),
-			intField("maxDownloadRate", "Téléchargement maximum (ko/s)", "Vitesse de téléchargement simulée, borne haute.", func(c *config.Config) *int { return &c.MaxDownloadRate }),
+		{ID: "realism", Fields: []fieldDef{
+			intField("caps.perLeecherMax", func(c *config.Config) *int { return &c.Caps.PerLeecherMax }),
+			intField("caps.lineMax", func(c *config.Config) *int { return &c.Caps.LineMax }),
+			floatField("caps.dailyRatioMax", func(c *config.Config) *float64 { return &c.Caps.DailyRatioMax }),
+			floatField("caps.swarmShare", func(c *config.Config) *float64 { return &c.Caps.SwarmShare }),
+			boolField("simulateDownload", func(c *config.Config) *bool { return &c.SimulateDownload }),
+			intField("minDownloadRate", func(c *config.Config) *int { return &c.MinDownloadRate }),
+			intField("maxDownloadRate", func(c *config.Config) *int { return &c.MaxDownloadRate }),
 		}},
-		{ID: "schedule", Title: "Planning horaire", Intro: "Un rythme de vie : plus de vitesse le soir, moins la nuit, et des pauses pendant lesquelles le seed est arrêté. Appliqué immédiatement.", Fields: []fieldDef{
-			boolField("schedule.enabled", "Activer le planning", "Désactivé : vitesse constante et aucune pause.", func(c *config.Config) *bool { return &c.Schedule.Enabled }),
+		{ID: "schedule", Fields: []fieldDef{
+			boolField("schedule.enabled", func(c *config.Config) *bool { return &c.Schedule.Enabled }),
 			{
-				Name: "schedule.timezone", Label: "Fuseau horaire", Kind: "text",
-				Help: "Nom IANA (« Europe/Paris ») ; vide : fuseau de la machine (variable TZ en Docker).",
-				get:  func(c *config.Config) string { return c.Schedule.Timezone },
-				set:  func(c *config.Config, raw string) error { c.Schedule.Timezone = strings.TrimSpace(raw); return nil },
+				Name: "schedule.timezone", Kind: "text",
+				get: func(c *config.Config) string { return c.Schedule.Timezone },
+				set: func(c *config.Config, raw string) error { c.Schedule.Timezone = strings.TrimSpace(raw); return nil },
 			},
 			hourlyField(),
 			pausesField(),
 		}},
-		{ID: "advanced", Title: "Avancé", Fields: []fieldDef{
-			intField("maxTrackerFailures", "Échecs de tracker tolérés", "Au-delà, le torrent est écarté. Ne vaut que pour les torrents démarrés ensuite : les torrents en cours gardent l'ancienne valeur.", func(c *config.Config) *int { return &c.MaxTrackerFailures }),
+		{ID: "advanced", Fields: []fieldDef{
+			intField("maxTrackerFailures", func(c *config.Config) *int { return &c.MaxTrackerFailures }),
 		}},
 	}
 }
 
 // buildSettings builds the view. values are the raw inputs to show (nil: the
 // values of cfg), errs the field errors.
-func buildSettings(cfg config.Config, values map[string]string, errs map[string]string, profiles []engine.ProfileChoice) settingsView {
+func buildSettings(lang i18n.Lang, cfg config.Config, values map[string]string, errs map[string]fieldMsg, profiles []engine.ProfileChoice) settingsView {
 	var v settingsView
 	for _, sd := range settingsSections() {
-		sec := sectionView{ID: sd.ID, Title: sd.Title, Intro: sd.Intro}
+		sec := sectionView{ID: sd.ID, Title: i18n.T(lang, "settings.sec."+sd.ID+".title")}
+		if i18n.Has(lang, "settings.sec."+sd.ID+".intro") {
+			sec.Intro = i18n.T(lang, "settings.sec."+sd.ID+".intro")
+		}
 		for _, fd := range sd.Fields {
 			val := fd.get(&cfg)
 			if raw, ok := values[fd.Name]; ok {
 				val = raw
 			}
-			f := fieldView{Name: fd.Name, Label: fd.Label, Help: fd.Help, Kind: fd.Kind, Step: fd.Step, Value: val, Error: errs[fd.Name]}
+			f := fieldView{Name: fd.Name, Label: i18n.T(lang, "settings."+fd.Name+".label"), Help: i18n.T(lang, "settings."+fd.Name+".help"), Kind: fd.Kind, Step: fd.Step, Value: val}
+			if m, ok := errs[fd.Name]; ok {
+				f.Error = i18n.T(lang, m.Key, m.Args...)
+			}
 			switch fd.Kind {
 			case "hourly":
-				f.Presets = schedulePresets()
+				f.Presets = schedulePresets(lang)
 				parts := strings.Split(val, ",")
 				for i := range 24 {
-					hv := hourView{Label: fmt.Sprintf("%02dh", i), Value: "1"}
+					hv := hourView{Label: i18n.T(lang, "settings.hourLabel", i), Value: "1"}
 					if i < len(parts) {
 						hv.Value = strings.TrimSpace(parts[i])
 					}
@@ -330,6 +342,9 @@ func buildSettings(cfg config.Config, values map[string]string, errs map[string]
 				}
 				f.Options = make([]optionView, len(opts))
 				for i, o := range opts {
+					if o.Key != "" {
+						o.Label = i18n.T(lang, o.Key)
+					}
 					o.Selected = o.Value == val
 					f.Options[i] = o
 				}
@@ -343,10 +358,10 @@ func buildSettings(cfg config.Config, values map[string]string, errs map[string]
 
 // parseSettings applies the posted form to a copy of cur. It returns the new
 // configuration, the raw values (to redisplay) and the errors by field.
-func parseSettings(cur config.Config, form map[string][]string) (config.Config, map[string]string, map[string]string) {
+func parseSettings(cur config.Config, form map[string][]string) (config.Config, map[string]string, map[string]fieldMsg) {
 	next := cur
 	values := map[string]string{}
-	errs := map[string]string{}
+	errs := map[string]fieldMsg{}
 	for _, sd := range settingsSections() {
 		for _, fd := range sd.Fields {
 			raw := ""
@@ -361,7 +376,11 @@ func parseSettings(cur config.Config, form map[string][]string) (config.Config, 
 				continue // absent field: unchanged
 			}
 			if err := fd.set(&next, raw); err != nil {
-				errs[fd.Name] = err.Error()
+				var m fieldMsg
+				if !errors.As(err, &m) {
+					m = fieldMsg{Key: "err.number"}
+				}
+				errs[fd.Name] = m
 			}
 		}
 	}
@@ -378,7 +397,7 @@ func parseSettings(cur config.Config, form map[string][]string) (config.Config, 
 	}
 	if next.AnnounceIP != "" {
 		if _, err := netip.ParseAddr(next.AnnounceIP); err != nil {
-			errs["announceIP"] = "adresse IP invalide"
+			errs["announceIP"] = fieldMsg{Key: "err.ip"}
 		}
 	}
 	return next, values, errs
@@ -405,24 +424,25 @@ func (s *Server) registerSettings(mux *http.ServeMux, be configBackend) {
 
 func (h *settingsHandlers) page(w http.ResponseWriter, r *http.Request) {
 	pd := h.s.newPageData(r, true)
-	pd.Data = buildSettings(h.snap(), nil, nil, h.be.ProfileChoices())
+	pd.Data = buildSettings(h.s.langOf(r), h.snap(), nil, nil, h.be.ProfileChoices())
 	h.s.render(w, http.StatusOK, "settings", pd)
 }
 
-func (h *settingsHandlers) formFragment(w http.ResponseWriter, _ *http.Request) {
-	h.write(w, http.StatusOK, buildSettings(h.snap(), nil, nil, h.be.ProfileChoices()), nil)
+func (h *settingsHandlers) formFragment(w http.ResponseWriter, r *http.Request) {
+	lang := h.s.langOf(r)
+	h.write(w, lang, http.StatusOK, buildSettings(lang, h.snap(), nil, nil, h.be.ProfileChoices()), nil)
 }
 
 // write renders the form fragment, followed by out-of-band toasts.
-func (h *settingsHandlers) write(w http.ResponseWriter, status int, v settingsView, toasts []toastView) {
+func (h *settingsHandlers) write(w http.ResponseWriter, lang i18n.Lang, status int, v settingsView, toasts []toastView) {
 	var sb strings.Builder
-	if err := h.s.pages["settings"].ExecuteTemplate(&sb, "settingsform", v); err != nil {
+	if err := h.s.page(lang, "settings").ExecuteTemplate(&sb, "settingsform", v); err != nil {
 		h.s.log.Error("render settings", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	for _, t := range toasts {
-		toast, terr := h.s.renderFragment("toast", t)
+		toast, terr := h.s.renderFragment(lang, "toast", t)
 		if terr != nil {
 			continue
 		}
@@ -440,6 +460,7 @@ func (h *settingsHandlers) write(w http.ResponseWriter, status int, v settingsVi
 // the write itself fails after a successful apply, the change is live but not
 // persisted, which the user is told.
 func (h *settingsHandlers) save(w http.ResponseWriter, r *http.Request) {
+	lang := h.s.langOf(r)
 	r.Body = http.MaxBytesReader(w, r.Body, maxSettingsBody)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -451,44 +472,50 @@ func (h *settingsHandlers) save(w http.ResponseWriter, r *http.Request) {
 	next, values, errs := parseSettings(cur, r.PostForm)
 	// Validate even when some fields failed to parse: the other fields still
 	// get their message (a field that failed to parse keeps its own).
-	var fe config.FieldErrors
-	if err := next.Validate(); errors.As(err, &fe) {
-		for k, m := range fe {
-			if _, ok := errs[k]; !ok {
-				errs[k] = m
-			}
+	for k, m := range configIssues(next) {
+		if _, ok := errs[k]; !ok {
+			errs[k] = m
 		}
 	}
 	profiles := h.be.ProfileChoices()
+	invalid := []toastView{{Kind: "error", Text: i18n.T(lang, "toast.settingsInvalid")}}
 	if len(errs) > 0 {
-		h.write(w, http.StatusUnprocessableEntity, buildSettings(cur, values, errs, profiles),
-			[]toastView{{Kind: "error", Text: "Réglages invalides : corrigez les champs signalés."}})
+		h.write(w, lang, http.StatusUnprocessableEntity, buildSettings(lang, cur, values, errs, profiles), invalid)
 		return
 	}
 	if err := h.be.ApplyConfig(next); err != nil {
 		msg := sanitizeError(err.Error())
 		var fe config.FieldErrors
 		if errors.As(err, &fe) {
-			h.write(w, http.StatusUnprocessableEntity, buildSettings(cur, values, fe, profiles),
-				[]toastView{{Kind: "error", Text: "Réglages invalides : corrigez les champs signalés."}})
+			h.write(w, lang, http.StatusUnprocessableEntity, buildSettings(lang, cur, values, configIssues(next), profiles), invalid)
 			return
 		}
 		h.s.log.Warn("settings: apply refused", "err", err)
-		v := buildSettings(cur, values, nil, profiles)
+		v := buildSettings(lang, cur, values, nil, profiles)
 		v.Error = msg
-		h.write(w, http.StatusUnprocessableEntity, v, []toastView{{Kind: "error", Text: "Réglages refusés : " + msg}})
+		h.write(w, lang, http.StatusUnprocessableEntity, v, []toastView{{Kind: "error", Text: i18n.T(lang, "toast.settingsRefused", msg)}})
 		return
 	}
-	toasts := []toastView{{Kind: "info", Text: "Réglages appliqués."}}
+	toasts := []toastView{{Kind: "info", Text: i18n.T(lang, "toast.settingsApplied")}}
 	if err := next.Save(h.path); err != nil {
 		h.s.log.Error("settings: save", "err", err)
-		toasts = []toastView{{Kind: "warning", Text: "Réglages appliqués mais non enregistrés : " + sanitizeError(err.Error())}}
+		toasts = []toastView{{Kind: "warning", Text: i18n.T(lang, "toast.settingsNotSaved", sanitizeError(err.Error()))}}
 	}
 	if next.Profile != cur.Profile || next.Port != cur.Port || next.AnnounceIP != cur.AnnounceIP {
-		toasts = append(toasts, toastView{Kind: "warning", Text: "Les annonces redémarrent avec ce changement (profil, port ou IP)."})
+		toasts = append(toasts, toastView{Kind: "warning", Text: i18n.T(lang, "toast.restart")})
 	}
 	if next.MaxTrackerFailures != cur.MaxTrackerFailures {
-		toasts = append(toasts, toastView{Kind: "info", Text: "Échecs de tracker tolérés : valable pour les torrents démarrés ensuite."})
+		toasts = append(toasts, toastView{Kind: "info", Text: i18n.T(lang, "toast.trackerFailures")})
 	}
-	h.write(w, http.StatusOK, buildSettings(next, nil, nil, profiles), toasts)
+	h.write(w, lang, http.StatusOK, buildSettings(lang, next, nil, nil, profiles), toasts)
+}
+
+// configIssues turns the validation problems of cfg into translatable field
+// errors (by stable code, never by translating the English message).
+func configIssues(cfg config.Config) map[string]fieldMsg {
+	out := map[string]fieldMsg{}
+	for k, is := range cfg.Issues() {
+		out[k] = fieldMsg{Key: "err.cfg." + is.Code, Args: is.Args}
+	}
+	return out
 }

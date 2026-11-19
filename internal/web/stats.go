@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"seedmirage/internal/config"
 	"seedmirage/internal/engine"
+	"seedmirage/internal/i18n"
 )
 
 // statsBackend is the optional part of the engine the statistics page needs
@@ -91,8 +93,10 @@ type trackerRow struct {
 
 type statsView struct {
 	Ratio    string
-	Scope    string
+	ScopeKey string // catalog key of the ratio help text
 	Top      []topRow
+	Units    string // byte units, comma-separated (chart axis)
+	Decimal  string // decimal mark (chart axis)
 	Trackers []trackerRow
 }
 
@@ -102,16 +106,20 @@ func (s *Server) registerStats(mux *http.ServeMux, be statsBackend) {
 }
 
 func (s *Server) statsPage(w http.ResponseWriter, r *http.Request, be statsBackend) {
+	lang := s.langOf(r)
 	st := be.Stats()
-	v := statsView{Ratio: formatRatio(st.RatioUploaded, st.RatioSize), Scope: "de la session"}
+	v := statsView{
+		Ratio: i18n.FormatRatio(lang, st.RatioUploaded, st.RatioSize), ScopeKey: "stats.ratio.help.session",
+		Units: strings.Join(i18n.ByteUnits(lang), ","), Decimal: i18n.DecimalSeparator(lang),
+	}
 	if st.RatioScope == config.RatioScopeTotal {
-		v.Scope = "cumulé"
+		v.ScopeKey = "stats.ratio.help.total"
 	}
 	for _, t := range st.Top {
-		v.Top = append(v.Top, topRow{Hash: t.InfoHash, Name: t.Name, Total: formatSize(t.UploadedTotal), Status: string(t.Status)})
+		v.Top = append(v.Top, topRow{Hash: t.InfoHash, Name: t.Name, Total: i18n.FormatSize(lang, t.UploadedTotal), Status: string(t.Status)})
 	}
 	for _, t := range st.Trackers {
-		v.Trackers = append(v.Trackers, trackerRow{Host: t.Host, Announces: t.Announces, Failures: t.Failures, Rate: decimalComma(t.FailureRate()*100, 1) + " %"})
+		v.Trackers = append(v.Trackers, trackerRow{Host: t.Host, Announces: t.Announces, Failures: t.Failures, Rate: i18n.FormatPercent(lang, t.FailureRate()*100, 1)})
 	}
 	pd := s.newPageData(r, true)
 	pd.Data = v

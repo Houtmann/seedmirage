@@ -1,26 +1,26 @@
-{{define "title"}}Profils{{end}}
+{{define "title"}}{{t "nav.profiles"}}{{end}}
 {{define "content"}}
 <div hx-ext="sse" sse-connect="/events" class="flex flex-col gap-4">
-  <h1 class="text-xl font-semibold">Profils clients</h1>
+  <h1 class="text-xl font-semibold">{{t "profiles.title"}}</h1>
   <div id="profiles-list" hx-get="/profiles/list" hx-trigger="sse:config.changed" hx-swap="innerHTML">{{template "profileslist" .Data}}</div>
 
   <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-updates">
     <div class="card-body gap-3 p-3 sm:p-6">
-      <h2 class="card-title" id="sec-updates">Nouvelles versions</h2>
-      <p class="text-sm opacity-70">Interroge les API publiques de versions des clients (réseau, à la demande seulement) et signale les familles dont la dernière version stable n'a pas de profil.</p>
-      <div><button type="button" class="btn btn-sm" hx-post="/profiles/updates" hx-target="#updates" hx-swap="innerHTML" hx-disabled-elt="this">Vérifier les mises à jour</button></div>
+      <h2 class="card-title" id="sec-updates">{{t "profiles.updates.title"}}</h2>
+      <p class="text-sm opacity-70">{{t "profiles.updates.help"}}</p>
+      <div><button type="button" class="btn btn-sm" hx-post="/profiles/updates" hx-target="#updates" hx-swap="innerHTML" hx-disabled-elt="this">{{t "profiles.updates.check"}}</button></div>
       <div id="updates" aria-live="polite"></div>
     </div>
   </section>
 
   <section class="card bg-base-100 shadow-sm" aria-labelledby="sec-import">
     <div class="card-body gap-3 p-3 sm:p-6">
-      <h2 class="card-title" id="sec-import">Importer un profil</h2>
-      <p class="text-sm opacity-70">Fichier JSON au format seedmirage (<code>schema: 1</code>), 1 Mo au maximum. Il est vérifié par le linter ; un profil existant n'est jamais écrasé.</p>
+      <h2 class="card-title" id="sec-import">{{t "profiles.import.title"}}</h2>
+      <p class="text-sm opacity-70">{{th "profiles.import.help"}}</p>
       <form method="post" action="/profiles/import" enctype="multipart/form-data" hx-post="/profiles/import" hx-encoding="multipart/form-data" hx-target="#profiles-list" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]" class="flex flex-wrap items-center gap-2">
-        <label class="sr-only" for="import-file">Fichier de profil (.json)</label>
+        <label class="sr-only" for="import-file">{{t "profiles.import.file"}}</label>
         <input id="import-file" type="file" name="file" accept=".json,application/json" required class="file-input file-input-sm w-full max-w-xs">
-        <button type="submit" class="btn btn-sm btn-primary">Importer</button>
+        <button type="submit" class="btn btn-sm btn-primary">{{t "profiles.import.submit"}}</button>
       </form>
     </div>
   </section>
@@ -36,19 +36,19 @@
       <h2 class="card-title" id="fam-{{.Label}}">{{.Label}}</h2>
       <div class="overflow-x-auto">
         <table class="table table-sm">
-          <thead><tr><th>Version</th><th class="text-right">État</th></tr></thead>
+          <thead><tr><th>{{t "profiles.version"}}</th><th class="text-right">{{t "profiles.state"}}</th></tr></thead>
           <tbody>
           {{range .Rows}}
             <tr class="hover">
               <td>
                 <a class="link link-hover font-medium" href="/profiles/{{.Name}}">{{.Version}}</a>
-                <div class="text-xs opacity-70">{{if .Released}}{{.Released}}{{else}}date inconnue{{end}} · {{.Source}}</div>
+                <div class="text-xs opacity-70">{{if .Released}}{{.Released}}{{else}}{{t "profiles.unknownDate"}}{{end}} · {{.Source}}</div>
               </td>
               <td>
                 <div class="flex flex-wrap items-center justify-end gap-1">
-                  {{if .Active}}<span class="badge badge-success badge-sm">actif</span>{{end}}
-                  {{if .Newest}}<span class="badge badge-info badge-sm">plus récent</span>{{end}}
-                  {{if not .Active}}<button type="button" class="btn btn-xs" hx-post="/profiles/{{.Name}}/use" hx-target="#profiles-list" hx-swap="innerHTML" hx-disabled-elt="this" aria-label="Utiliser le profil {{.Name}}">Utiliser</button>{{end}}
+                  {{if .Active}}<span class="badge badge-success badge-sm">{{t "profiles.active"}}</span>{{end}}
+                  {{if .Newest}}<span class="badge badge-info badge-sm">{{t "profiles.newest"}}</span>{{end}}
+                  {{if not .Active}}<button type="button" class="btn btn-xs" hx-post="/profiles/{{.Name}}/use" hx-target="#profiles-list" hx-swap="innerHTML" hx-disabled-elt="this" aria-label="{{t "profiles.useAria" .Name}}">{{t "profiles.use"}}</button>{{end}}
                 </div>
               </td>
             </tr>
@@ -59,15 +59,15 @@
     </div>
   </section>
 {{else}}
-  <p class="opacity-70">Aucun profil disponible.</p>
+  <p class="opacity-70">{{t "profiles.none"}}</p>
 {{end}}
 </div>
 {{end}}
 {{define "profilesupdates"}}
-{{if .Error}}<div class="alert alert-warning text-sm" role="alert">Vérification incomplète : {{.Error}}</div>{{end}}
+{{if .Error}}<div class="alert alert-warning text-sm" role="alert">{{t "profiles.updates.incomplete" .Error}}</div>{{end}}
 {{if .Notices}}
 <ul class="flex flex-col gap-1 text-sm">
-  {{range .Notices}}<li><strong>{{.Family}}</strong> {{.Latest}} est sortie{{if .Embedded}} (profil le plus récent : {{.Embedded}}){{else}} (aucun profil){{end}}.</li>{{end}}
+  {{range .Notices}}<li>{{if .Embedded}}{{th "profiles.updates.row" .Family .Latest .Embedded}}{{else}}{{th "profiles.updates.rowNone" .Family .Latest}}{{end}}</li>{{end}}
 </ul>
-{{else if .UpToDate}}<p class="text-sm">Aucune famille n'a de version plus récente que ses profils.</p>{{end}}
+{{else if .UpToDate}}<p class="text-sm">{{t "profiles.updates.upToDate"}}</p>{{end}}
 {{end}}

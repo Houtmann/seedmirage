@@ -20,6 +20,7 @@ import (
 	"seedmirage/internal/config"
 	"seedmirage/internal/engine"
 	"seedmirage/internal/events"
+	"seedmirage/internal/i18n"
 	"seedmirage/internal/torrent"
 )
 
@@ -119,6 +120,7 @@ func (e *dashEnv) request(ctx context.Context, t *testing.T, method, path string
 	if auth {
 		req.AddCookie(e.cookie())
 	}
+	req.Header.Set("Accept-Language", "fr")
 	for k, v := range hdr {
 		req.Header.Set(k, v)
 	}
@@ -394,19 +396,12 @@ func TestHomeRendersDashboard(t *testing.T) {
 
 func TestFormatting(t *testing.T) {
 	for _, tc := range []struct{ got, want string }{
-		{formatSize(0), "0 o"},
-		{formatSize(1023), "1023 o"},
-		{formatSize(1024), "1,0 Kio"},
-		{formatSize(1288490189), "1,2 Gio"},
-		{formatSpeed(0), "0,0 ko/s"},
-		{formatSpeed(12345), "12,3 ko/s"},
-		{formatSpeed(2_500_000), "2,50 Mo/s"},
-		{formatRatio(1, 0), "—"},
-		{formatRatio(3, 2), "1,50"},
-		{formatCountdown(-time.Second), "imminent"},
-		{formatCountdown(12 * time.Second), "dans 12 s"},
-		{formatCountdown(3 * time.Minute), "dans 3 min"},
-		{formatRelative(time.Time{}, time.Unix(0, 0)), "jamais"},
+		{formatCountdown(i18n.FR, -time.Second), "imminent"},
+		{formatCountdown(i18n.FR, 12*time.Second), "dans 12 s"},
+		{formatCountdown(i18n.EN, 3*time.Minute), "in 3 min"},
+		{formatRelative(i18n.FR, time.Time{}, time.Unix(0, 0)), "jamais"},
+		{formatRelative(i18n.EN, time.Time{}, time.Unix(0, 0)), "never"},
+		{formatRelative(i18n.EN, time.Unix(0, 0), time.Unix(120, 0)), "2 min ago"},
 		{trackerHost("udp://t.example:1337/announce"), "t.example"},
 		{trackerHost(""), ""},
 		{sanitizeError(`Get "https://x/announce/abc": eof`), `Get "[url] eof`},

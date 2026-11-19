@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"seedmirage/internal/i18n"
 	"seedmirage/internal/logring"
 )
 
@@ -36,15 +37,16 @@ type statusView struct {
 }
 
 func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
+	lang := s.langOf(r)
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
 	v := statusView{
 		Version:    s.deps.Version,
-		Uptime:     formatUptime(s.clock.Since(s.started)),
+		Uptime:     formatUptime(lang, s.clock.Since(s.started)),
 		DataDir:    s.cfg.DataDir,
 		Goroutines: runtime.NumGoroutine(),
-		MemAlloc:   formatSize(int64(ms.Alloc)), //nolint:gosec // bounded by RAM
-		MemSys:     formatSize(int64(ms.Sys)),   //nolint:gosec // bounded by RAM
+		MemAlloc:   i18n.FormatSize(lang, int64(ms.Alloc)), //nolint:gosec // bounded by RAM
+		MemSys:     i18n.FormatSize(lang, int64(ms.Sys)),   //nolint:gosec // bounded by RAM
 		Metrics:    s.cfg.Metrics,
 	}
 	if s.deps.Engine != nil {
@@ -64,19 +66,19 @@ func (s *Server) statusPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, http.StatusOK, "status", pd)
 }
 
-// formatUptime renders a duration as "2 j 3 h 4 min" (seconds below a minute).
-func formatUptime(d time.Duration) string {
+// formatUptime renders a duration as "2 d 3 h 4 min" (seconds below a minute).
+func formatUptime(lang i18n.Lang, d time.Duration) string {
 	d = max(d, 0).Truncate(time.Second)
 	days, h, m := int(d/(24*time.Hour)), int(d/time.Hour)%24, int(d/time.Minute)%60
 	switch {
 	case days > 0:
-		return fmt.Sprintf("%d j %d h %d min", days, h, m)
+		return i18n.T(lang, "time.uptimeDays", days, h, m)
 	case h > 0:
-		return fmt.Sprintf("%d h %d min", h, m)
+		return i18n.T(lang, "time.uptimeHours", h, m)
 	case m > 0:
-		return fmt.Sprintf("%d min", m)
+		return i18n.T(lang, "time.uptimeMinutes", m)
 	}
-	return fmt.Sprintf("%d s", int(d/time.Second))
+	return i18n.T(lang, "time.uptimeSeconds", int(d/time.Second))
 }
 
 // metricsText renders the Prometheus text exposition format (version 0.0.4).
