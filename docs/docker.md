@@ -5,7 +5,7 @@ seedmirage runs in a container **on your machine**; the interface is reachable o
 
 ```bash
 mkdir -p data                                 # owned by your user (see UID/GID)
-docker compose up -d --build                  # builds seedmirage:local from the sources and starts it
+docker compose up -d --build                  # builds the image from the sources and starts it
 docker compose logs seedmirage | grep token   # access link with the token
 docker compose down                           # sends the `stopped` announces (15 s at most)
 ```
@@ -21,7 +21,7 @@ Open the `http://127.0.0.1:7070/?token=...` link printed in the logs. Drop your 
 
 | Variable | Purpose |
 |---|---|
-| `SEEDMIRAGE_IMAGE` | Name of the built image (default `seedmirage:local`). |
+| `SEEDMIRAGE_IMAGE` | Image name (default `ghcr.io/houtmann/seedmirage:latest`; `--build` tags the locally built image with it, `docker compose pull` fetches the published one). |
 | `SEEDMIRAGE_VERSION` | Version injected in the binary (default `dev`). |
 | `SEEDMIRAGE_UID` / `SEEDMIRAGE_GID` | Host UID/GID for the files in `data/` (default `1000:1000`; `id -u`, `id -g`). |
 | `SEEDMIRAGE_UI_TOKEN` | Fixes the access token: at least 32 characters among letters, digits and `-_.~` (`openssl rand -hex 32`). It takes precedence over `data/ui-token` without overwriting it. An invalid token stops the startup with a clear message (and `restart: unless-stopped` restarts it in a loop: fix the value). |

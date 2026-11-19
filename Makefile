@@ -1,4 +1,5 @@
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+# Leading "v" of a tag is dropped (v1.2.3 -> 1.2.3).
+VERSION ?= $(patsubst v%,%,$(shell git describe --tags --always --dirty 2>/dev/null || echo dev))
 LDFLAGS := -X main.version=$(VERSION)
 DATA_DIR ?= ./data
 

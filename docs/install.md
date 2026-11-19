@@ -111,7 +111,8 @@ Stop seedmirage with Ctrl-C (or `SIGTERM`): it sends a `stopped` announce for ev
 
 ## Docker
 
-Requirements: Docker with the Compose plugin. The image is built from the sources (it is not published to a registry).
+Requirements: Docker with the Compose plugin. `docker compose up -d --build` builds the image from the sources; releases are
+also published as `ghcr.io/houtmann/seedmirage:<version>` and `:latest` (`linux/amd64` and `linux/arm64`).
 
 ```bash
 git clone https://github.com/Houtmann/seedmirage.git
@@ -129,6 +130,19 @@ The container runs as `1000:1000` by default. If your user has other ids, copy `
 `SEEDMIRAGE_UID` / `SEEDMIRAGE_GID` (`id -u`, `id -g`) before the first start. All variables, the healthcheck and how to reach
 a tracker running on the host are in [`docker.md`](docker.md). `make up` and `make down` are shortcuts for the two compose
 commands.
+
+## Releases
+
+Versions follow semver and are tagged `vX.Y.Z`. Each [GitHub release](https://github.com/Houtmann/seedmirage/releases)
+contains the archives for macOS (arm64, amd64), Linux (amd64, arm64) and Windows (amd64) and a `SHA256SUMS` file.
+The container image is `ghcr.io/houtmann/seedmirage:X.Y.Z` (and `:latest`). Pre-releases (a version with a suffix, such as
+`0.1.0-rc1`) are marked as pre-release and never move `latest`.
+
+Download the archive and `SHA256SUMS` into the same folder, then verify the archive:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing      # shasum -a 256 -c ... on macOS
+```
 
 ## Where the data lives
 
@@ -159,7 +173,7 @@ Back up the folder by copying it while seedmirage is stopped.
 
 - **Binary from source**: `git pull`, `make build`, restart. The data folder is kept as is.
 - **Archive**: replace the executable with the one from the new archive.
-- **Docker**: `git pull`, then `docker compose up -d --build`.
+- **Docker**: `docker compose pull && docker compose up -d` (published image), or `git pull` then `docker compose up -d --build` (from the sources).
 
 Embedded profiles are refreshed on startup: a profile in `clients/` that you have not modified is updated with the
 new binary, a profile you edited is left alone (see [`profiles.md`](profiles.md#installation-in-clients)).
@@ -168,5 +182,5 @@ Settings you do not know about in `config.json` are ignored and missing ones tak
 ## Uninstall
 
 1. Stop seedmirage (Ctrl-C, or `docker compose down`).
-2. Delete the executable, or for Docker the clone, and the image: `docker image rm seedmirage:local`.
+2. Delete the executable, or for Docker the clone, and the image: `docker image rm ghcr.io/houtmann/seedmirage:latest`.
 3. Delete the data folder if you no longer need your settings and statistics.

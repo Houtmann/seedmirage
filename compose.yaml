@@ -6,7 +6,7 @@
 #   docker compose down                # sends the `stopped` announces (15 s at most)
 #
 # Variables (a .env file next to this compose file, see .env.example, or the environment):
-#   SEEDMIRAGE_IMAGE      name of the built image (default seedmirage:local)
+#   SEEDMIRAGE_IMAGE      image name (default ghcr.io/houtmann/seedmirage:latest; the built image gets this name too)
 #   SEEDMIRAGE_VERSION    version injected in the binary (default dev)
 #   SEEDMIRAGE_UID/GID    host UID/GID for the files in ./data (default 1000:1000; `id -u`, `id -g`)
 #   SEEDMIRAGE_UI_TOKEN   fixes the access token (>= 32 characters: openssl rand -hex 32); otherwise data/ui-token
@@ -20,7 +20,8 @@ services:
       dockerfile: deploy/Dockerfile
       args:
         VERSION: ${SEEDMIRAGE_VERSION:-dev}
-    image: ${SEEDMIRAGE_IMAGE:-seedmirage:local}
+    # Published image (docker compose pull to update); `make up` (--build) builds it from the sources instead.
+    image: ${SEEDMIRAGE_IMAGE:-ghcr.io/houtmann/seedmirage:latest}
     # Create ./data with this same UID/GID before the first start (otherwise Docker creates it as root).
     user: "${SEEDMIRAGE_UID:-1000}:${SEEDMIRAGE_GID:-1000}"
     restart: unless-stopped
