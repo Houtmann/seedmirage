@@ -150,23 +150,34 @@ func (s *Server) checkOrigin(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) sessionOK(r *http.Request) bool {
+// effectiveSession is the session the CSRF token is bound to. With
+// authentication disabled it is always empty (any cookie is ignored, such as a
+// session cookie of another instance sharing the host); otherwise it is the
+// valid session cookie, and ok is false when there is none.
+func (s *Server) effectiveSession(r *http.Request) (session string, ok bool) {
+	if !s.auth.enabled {
+		return "", true
+	}
 	c, err := r.Cookie(SessionCookie)
-	return err == nil && s.auth.validSession(c.Value)
+	if err != nil || !s.auth.validSession(c.Value) {
+		return "", false
+	}
+	return c.Value, true
+}
+
+func (s *Server) sessionOK(r *http.Request) bool {
+	_, ok := s.effectiveSession(r)
+	return ok
 }
 
 // protect requires a valid session (401 otherwise) and, on unsafe methods, a
 // matching X-CSRF-Token (403 otherwise).
 func (s *Server) protect(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session := ""
-		if s.auth.enabled {
-			if !s.sessionOK(r) {
-				s.unauthorized(w, r)
-				return
-			}
-			c, _ := r.Cookie(SessionCookie)
-			session = c.Value
+		session, ok := s.effectiveSession(r)
+		if !ok {
+			s.unauthorized(w, r)
+			return
 		}
 		if isUnsafe(r.Method) && !constEq(r.Header.Get(CSRFHeader), s.auth.csrfToken(session)) {
 			http.Error(w, "forbidden: missing or invalid CSRF token", http.StatusForbidden)

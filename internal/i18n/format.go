@@ -69,18 +69,15 @@ func FormatSize(lang Lang, n int64) string {
 	return FormatNumber(lang, f, 1) + " " + units[i]
 }
 
-// FormatSpeed formats bytes per second in decimal units ("12,3 ko/s",
-// "2,50 Mo/s"; en "kB/s", "MB/s"), switching to mega from 1000 k.
+// FormatSpeed formats bytes per second in binary units, like FormatSize
+// ("12,3 Kio/s", "2,50 Mio/s"; en "KiB/s", "MiB/s"), switching to mebi from 1024 Ki.
 func FormatSpeed(lang Lang, bps int64) string {
-	k := float64(max(bps, 0)) / 1000
-	kilo, mega := "kB/s", "MB/s"
-	if lang == FR {
-		kilo, mega = "ko/s", "Mo/s"
+	units := ByteUnits(lang)
+	k := float64(max(bps, 0)) / 1024
+	if k >= 1024 {
+		return FormatNumber(lang, k/1024, 2) + " " + units[2] + "/s"
 	}
-	if k >= 1000 {
-		return FormatNumber(lang, k/1000, 2) + " " + mega
-	}
-	return FormatNumber(lang, k, 1) + " " + kilo
+	return FormatNumber(lang, k, 1) + " " + units[1] + "/s"
 }
 
 // FormatRatio formats upload/size with two decimals; "—" when size is unknown.

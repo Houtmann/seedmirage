@@ -36,8 +36,8 @@ const (
 
 // Config is the content of config.json.
 type Config struct {
-	UploadRateMin      int     `json:"uploadRateMin"` // kB/s
-	UploadRateMax      int     `json:"uploadRateMax"` // kB/s
+	UploadRateMin      int     `json:"uploadRateMin"` // KiB/s
+	UploadRateMax      int     `json:"uploadRateMax"` // KiB/s
 	MaxActiveTorrents  int     `json:"maxActiveTorrents"`
 	Profile            string  `json:"profile"`
 	KeepIdleTorrents   bool    `json:"keepIdleTorrents"`
@@ -57,16 +57,16 @@ type Config struct {
 	AnnounceIP      string   `json:"announceIP"` // "" = not sent
 	AutoStart       bool     `json:"autoStart"`  // start seeding when `serve` starts
 	// SimulateDownload: a torrent first seen while this is on starts as a
-	// download (left = size) before seeding. Rates in kB/s.
+	// download (left = size) before seeding. Rates in KiB/s.
 	SimulateDownload bool `json:"simulateDownload"`
 	MinDownloadRate  int  `json:"minDownloadRate"`
 	MaxDownloadRate  int  `json:"maxDownloadRate"`
 }
 
-// Caps are the plausibility caps. Speeds are in kB/s like uploadRate*.
+// Caps are the plausibility caps. Speeds are in KiB/s like uploadRate*.
 type Caps struct {
-	PerLeecherMax int     `json:"perLeecherMax"` // kB/s per leecher, 0 = no cap
-	LineMax       int     `json:"lineMax"`       // kB/s, declared upstream line, 0 = unlimited
+	PerLeecherMax int     `json:"perLeecherMax"` // KiB/s per leecher, 0 = no cap
+	LineMax       int     `json:"lineMax"`       // KiB/s, declared upstream line, 0 = unlimited
 	DailyRatioMax float64 `json:"dailyRatioMax"` // upload over 24 h <= ratio x size, 0 = off
 	SwarmShare    float64 `json:"swarmShare"`    // max share of the swarm demand, in ]0,1]
 }

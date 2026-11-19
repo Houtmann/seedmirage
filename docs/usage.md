@@ -75,7 +75,7 @@ The default is the most recent embedded qBittorrent profile.
 
 ## Settings
 
-The *Settings* page applies changes immediately and saves them to `config.json`. Rates are in kB/s. You can also edit
+The *Settings* page applies changes immediately and saves them to `config.json`. Rates are in KiB/s. You can also edit
 `config.json` by hand while seedmirage is stopped; durations accept `"6h"` or `"90m"`.
 
 ### Speed
@@ -115,12 +115,12 @@ The *Settings* page applies changes immediately and saves them to `config.json`.
 
 | Setting | Meaning | Default |
 |---|---|---|
-| Cap per leecher, kB/s (`caps.perLeecherMax`) | Maximum speed reported for one leecher. `0` = no cap. | 500 |
-| Declared uplink, kB/s (`caps.lineMax`) | Cap on the global speed, as if it were your line speed. `0` = unlimited. | 0 |
+| Cap per leecher, KiB/s (`caps.perLeecherMax`) | Maximum speed reported for one leecher. `0` = no cap. | 500 |
+| Declared uplink, KiB/s (`caps.lineMax`) | Cap on the global speed, as if it were your line speed. `0` = unlimited. | 0 |
 | Maximum ratio per 24 h (`caps.dailyRatioMax`) | Upload over 24 hours stays under this ratio times the torrent size. `0` = disabled. | 0 |
 | Maximum swarm share (`caps.swarmShare`) | Share of the swarm's demand one torrent can absorb, in ]0 ; 1]. | 0.5 |
 | Simulate a download (`simulateDownload`) | A torrent seen for the first time first "downloads", then seeds. Applies to torrents added afterwards. | off |
-| Minimum / maximum download, kB/s (`minDownloadRate`, `maxDownloadRate`) | Bounds of the simulated download speed. | 100 / 2000 |
+| Minimum / maximum download, KiB/s (`minDownloadRate`, `maxDownloadRate`) | Bounds of the simulated download speed. | 100 / 2000 |
 
 ### Hourly schedule (`schedule`)
 

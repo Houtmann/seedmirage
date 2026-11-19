@@ -169,6 +169,7 @@ func (s *Server) Handler() http.Handler {
 		_, _ = w.Write([]byte("ok\n"))
 	})
 	mux.HandleFunc("GET /static/", s.serveStatic)
+	mux.HandleFunc("GET /favicon.ico", s.serveFavicon)
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.Handle("POST /lang", s.protect(http.HandlerFunc(s.setLang)))
 	if s.deps.Engine != nil {
@@ -206,6 +207,13 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	s.static.ServeHTTP(w, r)
 }
 
+// serveFavicon serves the PNG icon at the path browsers request by default.
+func (s *Server) serveFavicon(w http.ResponseWriter, r *http.Request) {
+	r.URL.Path = "/static/favicon.png"
+	w.Header().Set("Cache-Control", "public, max-age=86400") // fixed URL: no immutable
+	s.static.ServeHTTP(w, r)
+}
+
 // pageData is the data given to every page template.
 type pageData struct {
 	Version   string
@@ -220,11 +228,8 @@ type pageData struct {
 func (s *Server) newPageData(r *http.Request, nav bool) pageData {
 	lang := s.langOf(r)
 	pd := pageData{Version: s.deps.Version, Nav: nav, Lang: string(lang), Langs: langOptions(lang)}
-	session := ""
-	if c, err := r.Cookie(SessionCookie); err == nil {
-		session = c.Value
-	}
 	if nav {
+		session, _ := s.effectiveSession(r)
 		pd.Path = r.URL.RequestURI()
 		b, _ := json.Marshal(map[string]string{CSRFHeader: s.auth.csrfToken(session)})
 		pd.HXHeaders = string(b)

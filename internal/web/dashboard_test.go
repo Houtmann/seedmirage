@@ -189,7 +189,7 @@ func TestEventsInitialStateThenSpeed(t *testing.T) {
 	if ev.name != "state" {
 		t.Fatalf("first event = %q, want state", ev.name)
 	}
-	for _, want := range []string{"Ubuntu &lt;b&gt;ISO&lt;/b&gt;", "tracker.example", "3,0 Gio", "1,50 Mo/s", "qbittorrent-5.3", "4 / 2", "5,0 Gio", "2,0 Gio", "dans 1 min"} {
+	for _, want := range []string{"Ubuntu &lt;b&gt;ISO&lt;/b&gt;", "tracker.example", "3,0 Gio", "1,43 Mio/s", "qbittorrent-5.3", "4 / 2", "5,0 Gio", "2,0 Gio", "dans 1 min"} {
 		if !strings.Contains(ev.data, want) {
 			t.Errorf("initial state lacks %q:\n%s", want, ev.data)
 		}
@@ -219,7 +219,7 @@ func TestEventsInitialStateThenSpeed(t *testing.T) {
 	if ev.name != "state" { // the announce.failed event made the state dirty too: full refresh
 		t.Fatalf("event after tick = %q", ev.name)
 	}
-	if !strings.Contains(ev.data, "2,00 Mo/s") {
+	if !strings.Contains(ev.data, "1,91 Mio/s") {
 		t.Errorf("speed not refreshed:\n%s", ev.data)
 	}
 

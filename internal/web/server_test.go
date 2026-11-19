@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -154,6 +155,54 @@ func TestNoAuth(t *testing.T) {
 	// CSRF still applies without auth.
 	if w := e.do("POST", "/api/ping", nil); w.Code != http.StatusForbidden {
 		t.Errorf("POST without csrf = %d", w.Code)
+	}
+}
+
+func TestNoAuthForeignSessionCookie(t *testing.T) {
+	e := newEnv(t, func(c *config.Startup) { c.NoAuth = true })
+	foreign := func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: SessionCookie, Value: "cookie-of-another-instance"}) //nolint:gosec // test cookie
+	}
+	w := e.do("GET", "/", foreign)
+	if w.Code != 200 {
+		t.Fatalf("home = %d", w.Code)
+	}
+	m := regexp.MustCompile(`&#34;` + CSRFHeader + `&#34;:&#34;([^&]+)&#34;|"` + CSRFHeader + `":"([^"]+)"`).FindStringSubmatch(w.Body.String())
+	if m == nil {
+		t.Fatalf("no CSRF token in page: %s", w.Body.String())
+	}
+	tok := m[1] + m[2]
+	if w := e.do("POST", "/api/ping", func(r *http.Request) { foreign(r); r.Header.Set(CSRFHeader, tok) }); w.Code != 200 {
+		t.Errorf("POST with page token = %d", w.Code)
+	}
+	if w := e.do("POST", "/api/ping", foreign); w.Code != http.StatusForbidden {
+		t.Errorf("POST without token = %d", w.Code)
+	}
+}
+
+func TestAuthForeignSessionCookieRefused(t *testing.T) {
+	e := newEnv(t, nil)
+	foreign := func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: SessionCookie, Value: "cookie-of-another-instance"}) //nolint:gosec // test cookie
+	}
+	if w := e.do("GET", "/", foreign); w.Code != http.StatusUnauthorized {
+		t.Errorf("home = %d", w.Code)
+	}
+	csrf := e.srv.auth.csrfToken("cookie-of-another-instance")
+	if w := e.do("POST", "/api/ping", func(r *http.Request) { foreign(r); r.Header.Set(CSRFHeader, csrf) }); w.Code != http.StatusUnauthorized {
+		t.Errorf("POST = %d", w.Code)
+	}
+}
+
+func TestFavicon(t *testing.T) {
+	e := newEnv(t, nil)
+	w := e.do("GET", "/favicon.ico", nil)
+	if w.Code != 200 || w.Header().Get("Content-Type") != "image/png" || w.Body.Len() == 0 {
+		t.Fatalf("favicon = %d %q", w.Code, w.Header().Get("Content-Type"))
+	}
+	w = e.do("GET", "/", func(r *http.Request) { r.AddCookie(e.session()) })
+	if !strings.Contains(w.Body.String(), `rel="icon" type="image/png"`) {
+		t.Error("layout does not declare the icon")
 	}
 }
 

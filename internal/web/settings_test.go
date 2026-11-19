@@ -41,7 +41,7 @@ func (c *cfgBackend) ApplyConfig(cfg config.Config) error {
 	c.applied = append(c.applied, cfg)
 	c.mu.Lock()
 	c.snap.Config = cfg
-	c.snap.Speed = int64(cfg.UploadRateMax) * 1000
+	c.snap.Speed = int64(cfg.UploadRateMax) * 1024
 	c.mu.Unlock()
 	c.bus.Publish(events.Event{Type: events.ConfigChanged})
 	return nil
@@ -317,7 +317,7 @@ func TestSettingsChangeReachesEventStream(t *testing.T) {
 	}
 	e.clk.Advance(time.Second)
 	ev := mustRead(t, br)
-	if ev.name != "state" || !strings.Contains(ev.data, "2,00 Mo/s") {
+	if ev.name != "state" || !strings.Contains(ev.data, "1,95 Mio/s") {
 		t.Fatalf("dashboard not refreshed: %s %s", ev.name, ev.data)
 	}
 	if w := e.do("GET", "/settings/form", nil, false); !strings.Contains(w.Body.String(), `value="2000"`) {
