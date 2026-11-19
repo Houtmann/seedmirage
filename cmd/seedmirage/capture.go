@@ -18,6 +18,7 @@ import (
 
 	"seedmirage/internal/capture"
 	"seedmirage/internal/clock"
+	"seedmirage/internal/emulation"
 )
 
 const maxCaptureTorrents = 200
@@ -37,10 +38,19 @@ func setupCapture(fs *flag.FlagSet) func([]string, io.Writer, io.Writer) int {
 	udpTorrents := fs.Int("udp-torrents", 1, "number of fake torrents announced over UDP")
 	announceHost := fs.String("announce-host", "", "host:port written in the .torrent files (default: the listen address)")
 	inferOnly := fs.Bool("infer-only", false, "do not start the tracker: analyse the raw.jsonl already present in --out")
+	compare := fs.String("compare", "", "compare the capture in --out to a profile (embedded name or .json file): no tracker, prints the differences field by field, exit 1 if any")
+	updateProfile := fs.Bool("update-profile", false, "with --compare: also write the profile inferred from the capture as <name>.candidate.json (next to the profile file, or in --out for an embedded one); never overwrites")
 	var refs stringList
 	fs.Var(&refs, "reference", "https URL of the client's source code, added to the profile (repeatable)")
 	return func(_ []string, stdout, stderr io.Writer) int {
 		opts := capture.Options{References: refs}
+		if *updateProfile && *compare == "" {
+			_, _ = fmt.Fprintln(stderr, "seedmirage capture: --update-profile requires --compare")
+			return exitUsage
+		}
+		if *compare != "" {
+			return captureCompare(*compare, *out, *updateProfile, opts, stdout, stderr)
+		}
 		if *inferOnly {
 			res, err := capture.Analyze(*out, opts)
 			return captureSummary(res, err, *out, stdout, stderr)
@@ -105,4 +115,59 @@ func captureSummary(res *capture.Result, err error, out string, stdout, stderr i
 		_, _ = fmt.Fprintf(stderr, "seedmirage capture: %v\n", err)
 	}
 	return 1
+}
+
+// loadCompareProfile resolves the --compare argument: an existing file, or the name of an embedded profile.
+// dir is where a candidate must be written next to the profile ("" for an embedded profile).
+func loadCompareProfile(arg string) (p *emulation.Profile, dir string, err error) {
+	if st, serr := os.Stat(arg); serr == nil && !st.IsDir() {
+		data, err := os.ReadFile(arg) //nolint:gosec // path chosen by the user
+		if err != nil {
+			return nil, "", err
+		}
+		p, err := emulation.Parse(data)
+		return p, filepath.Dir(arg), err
+	}
+	p, err = emulation.LoadEmbedded(strings.TrimSuffix(arg, ".json"))
+	return p, "", err
+}
+
+// captureCompare implements --compare: it replays the capture of out against the profile
+// (the embedded profile is never modified) and, with update, writes a candidate profile.
+func captureCompare(arg, out string, update bool, opts capture.Options, stdout, stderr io.Writer) int {
+	prof, dir, err := loadCompareProfile(arg)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "seedmirage capture: profile %q: %v\n", arg, err)
+		return exitUsage
+	}
+	cmp, err := capture.CompareDir(out, prof)
+	if err != nil {
+		if errors.Is(err, capture.ErrNoAnnounce) {
+			_, _ = fmt.Fprintln(stderr, "seedmirage capture: no HTTP announce was recorded; nothing to compare")
+		} else {
+			_, _ = fmt.Fprintf(stderr, "seedmirage capture: %v\n", err)
+		}
+		return 1
+	}
+	_, _ = fmt.Fprint(stdout, cmp.Text())
+	if update {
+		res, err := capture.Analyze(out, opts)
+		if err != nil && res == nil {
+			_, _ = fmt.Fprintf(stderr, "seedmirage capture: %v\n", err)
+			return 1
+		}
+		if dir == "" {
+			dir = out
+		}
+		path, err := capture.WriteCandidate(dir, res)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "seedmirage capture: candidate profile: %v\n", err)
+			return 1
+		}
+		_, _ = fmt.Fprintf(stdout, "Candidate profile: %s (the compared profile is untouched; review it, then adopt it by hand)\n", path)
+	}
+	if !cmp.Identical() {
+		return 1
+	}
+	return exitOK
 }

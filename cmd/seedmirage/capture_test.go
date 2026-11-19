@@ -79,6 +79,38 @@ func TestCaptureInferOnly(t *testing.T) {
 		t.Errorf("lint : %v", fs)
 	}
 
+	// --compare: the same profile matches (exit 0), another one differs (exit 1, field by field).
+	out.Reset()
+	errb.Reset()
+	if code := run([]string{"capture", "--compare", "qbittorrent-5.3.0", "--out", dir}, &out, &errb); code != 0 {
+		t.Fatalf("compare same profile: code = %d\nstdout: %s\nstderr: %s", code, out.String(), errb.String())
+	}
+	out.Reset()
+	if code := run([]string{"capture", "--compare", "transmission-4.1.4", "--out", dir}, &out, &errb); code != 1 {
+		t.Fatalf("compare other profile: code = %d, want 1\n%s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "DIFFERENCES") || !strings.Contains(out.String(), "query.order") {
+		t.Errorf("report = %s", out.String())
+	}
+	// --update-profile writes a candidate, once.
+	out.Reset()
+	if code := run([]string{"capture", "--compare", "qbittorrent-5.3.0", "--update-profile", "--out", dir}, &out, &errb); code != 0 {
+		t.Fatalf("update-profile: code = %d\n%s%s", code, out.String(), errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "qbittorrent-5.3.0.candidate.json")); err != nil {
+		t.Errorf("candidate missing: %v", err)
+	}
+	errb.Reset()
+	if code := run([]string{"capture", "--compare", "qbittorrent-5.3.0", "--update-profile", "--out", dir}, &out, &errb); code != 1 || !strings.Contains(errb.String(), "candidate") {
+		t.Errorf("second update-profile: code = %d, stderr = %s", code, errb.String())
+	}
+	if code := run([]string{"capture", "--update-profile", "--out", dir}, &out, &errb); code != exitUsage {
+		t.Errorf("update-profile alone: code = %d, want %d", code, exitUsage)
+	}
+	if code := run([]string{"capture", "--compare", "no-such-profile", "--out", dir}, &out, &errb); code != exitUsage {
+		t.Errorf("unknown profile: code = %d, want %d", code, exitUsage)
+	}
+
 	// Sans raw.jsonl : échec propre.
 	if code := run([]string{"capture", "--infer-only", "--out", t.TempDir()}, &out, &errb); code != 1 {
 		t.Errorf("code = %d, want 1", code)
