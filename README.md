@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo-banner.svg" alt="seedmirage" width="720">
+</p>
+
 # seedmirage
 
 A **local** BitTorrent seed simulator written in Go. It announces a realistic upload to trackers without

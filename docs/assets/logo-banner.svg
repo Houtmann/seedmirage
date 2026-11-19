@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 240" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgBanner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080c16"/>
+      <stop offset="100%" stop-color="#0d1424"/>
+    </linearGradient>
+
+    <linearGradient id="borderBanner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(0, 242, 254, 0.4)"/>
+      <stop offset="50%" stop-color="rgba(139, 92, 246, 0.2)"/>
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.05)"/>
+    </linearGradient>
+
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#e0f2fe"/>
+      <stop offset="70%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#00f2fe"/>
+    </linearGradient>
+
+    <linearGradient id="mirageGradTitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+
+    <linearGradient id="seedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+
+    <linearGradient id="mirageGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+
+    <linearGradient id="mirageGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Banner Card Background -->
+  <rect x="8" y="8" width="864" height="224" rx="24" fill="url(#bgBanner)" stroke="url(#borderBanner)" stroke-width="1.5"/>
+
+  <!-- Subtle Grid Accent -->
+  <g opacity="0.05" stroke="#38bdf8" stroke-width="1">
+    <line x1="8" y1="60" x2="872" y2="60"/>
+    <line x1="8" y1="120" x2="872" y2="120"/>
+    <line x1="8" y1="180" x2="872" y2="180"/>
+    <line x1="220" y1="8" x2="220" y2="232"/>
+  </g>
+
+  <!-- Ambient Glow Behind Icon -->
+  <ellipse cx="120" cy="120" rx="80" ry="70" fill="#00f2fe" opacity="0.22" filter="url(#glow)"/>
+
+  <!-- Logo Mark Scaled & Placed at (120, 120) -->
+  <g transform="translate(12, 12) scale(0.42)">
+    <!-- Outer Arrow Wings -->
+    <path d="M 256,86 
+             C 274,122 344,204 344,242
+             C 344,250 340,256 332,256
+             L 286,256
+             C 280,256 276,252 276,246
+             C 276,220 264,178 256,156
+             C 248,178 236,220 236,246
+             C 236,252 232,256 226,256
+             L 180,256
+             C 172,256 168,250 168,242
+             C 168,204 238,122 256,86 Z" 
+          fill="url(#seedGrad)"/>
+
+    <path d="M 256,128 
+             C 264,152 296,204 296,226
+             C 296,230 292,234 286,234
+             L 268,234
+             C 264,234 260,230 260,226
+             L 260,198
+             C 260,194 252,194 252,198
+             L 252,226
+             C 252,230 248,234 244,234
+             L 226,234
+             C 220,234 216,230 216,226
+             C 216,204 248,152 256,128 Z" 
+          fill="#ffffff" opacity="0.95"/>
+
+    <circle cx="256" cy="66" r="4.5" fill="#ffffff"/>
+    <circle cx="244" cy="50" r="2.5" fill="#00f2fe" opacity="0.8"/>
+
+    <!-- Transition Line -->
+    <rect x="156" y="266" width="200" height="4" rx="2" fill="#00f2fe" opacity="0.95"/>
+
+    <!-- Mirage Ripples -->
+    <path d="M 166,280 L 342,280 C 347,280 349,285 345,288 L 333,296 C 330,298 327,298 323,298 L 185,298 C 181,298 178,298 175,296 L 163,288 C 159,285 161,280 166,280 Z" 
+          fill="url(#mirageGrad1)" opacity="0.90"/>
+    <path d="M 174,306 L 334,306 C 339,306 341,311 337,314 L 327,322 C 324,324 321,324 317,324 L 191,324 C 187,324 184,324 181,322 L 171,314 C 167,311 169,306 174,306 Z" 
+          fill="url(#mirageGrad1)" opacity="0.75" transform="translate(-4, 0)"/>
+    <path d="M 186,332 L 322,332 C 326,332 328,337 325,340 L 317,348 C 314,350 311,350 307,350 L 201,350 C 197,350 194,350 191,348 L 183,340 C 180,337 182,332 186,332 Z" 
+          fill="url(#mirageGrad2)" opacity="0.58" transform="translate(6, 0)"/>
+    <path d="M 202,358 L 306,358 C 310,358 312,363 309,366 L 303,372 C 300,374 297,374 293,374 L 215,374 C 211,374 208,374 205,372 L 199,366 C 196,363 198,358 202,358 Z" 
+          fill="url(#mirageGrad2)" opacity="0.40" transform="translate(-8, 0)"/>
+    <path d="M 220,382 L 288,382 C 292,382 294,386 291,389 L 287,394 C 285,396 282,396 279,396 L 229,396 C 226,396 223,396 221,394 L 217,389 C 214,386 216,382 220,382 Z" 
+          fill="#ec4899" opacity="0.24" transform="translate(4, 0)"/>
+  </g>
+
+  <!-- Typography: 'seed' in bright white/cyan, 'mirage' in neon violet/fuchsia -->
+  <text x="240" y="116" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="62" letter-spacing="-0.5">
+    <tspan fill="url(#titleGrad)">seed</tspan><tspan fill="url(#mirageGradTitle)">mirage</tspan>
+  </text>
+
+  <!-- Subtitle Tagline -->
+  <text x="242" y="156" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="500" font-size="20" fill="#94a3b8" letter-spacing="2.5">
+    BITTORRENT SEED SIMULATOR
+  </text>
+
+  <!-- Badges / Tech Highlights -->
+  <g transform="translate(242, 172)">
+    <rect x="0" y="0" width="58" height="22" rx="6" fill="#00f2fe" fill-opacity="0.12" stroke="#00f2fe" stroke-opacity="0.35" stroke-width="1"/>
+    <text x="29" y="15" font-family="ui-monospace, SFMono-Regular, monospace" font-size="11" font-weight="600" fill="#38bdf8" text-anchor="middle">Go</text>
+
+    <rect x="68" y="0" width="66" height="22" rx="6" fill="#8b5cf6" fill-opacity="0.12" stroke="#8b5cf6" stroke-opacity="0.35" stroke-width="1"/>
+    <text x="101" y="15" font-family="ui-monospace, SFMono-Regular, monospace" font-size="11" font-weight="600" fill="#c084fc" text-anchor="middle">BEP 15</text>
+
+    <rect x="144" y="0" width="74" height="22" rx="6" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-opacity="0.35" stroke-width="1"/>
+    <text x="181" y="15" font-family="ui-monospace, SFMono-Regular, monospace" font-size="11" font-weight="600" fill="#34d399" text-anchor="middle">Stealth</text>
+
+    <rect x="228" y="0" width="86" height="22" rx="6" fill="#f43f5e" fill-opacity="0.12" stroke="#f43f5e" stroke-opacity="0.35" stroke-width="1"/>
+    <text x="271" y="15" font-family="ui-monospace, SFMono-Regular, monospace" font-size="11" font-weight="600" fill="#fb7185" text-anchor="middle">Web UI</text>
+  </g>
+</svg>

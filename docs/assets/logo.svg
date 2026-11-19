@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080c16"/>
+      <stop offset="50%" stop-color="#0c1222"/>
+      <stop offset="100%" stop-color="#06080f"/>
+    </linearGradient>
+
+    <!-- Border Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(0, 242, 254, 0.4)"/>
+      <stop offset="50%" stop-color="rgba(139, 92, 246, 0.2)"/>
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.05)"/>
+    </linearGradient>
+
+    <!-- Core Seed Gradient (Vibrant Cyan to Electric Emerald) -->
+    <linearGradient id="seedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="40%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+
+    <!-- Mirage Shimmer Gradient (Teal to Ethereal Purple) -->
+    <linearGradient id="mirageGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+
+    <linearGradient id="mirageGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <!-- Ambient Glow Filter -->
+    <filter id="ambientGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="42" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="neonGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12" result="blur1"/>
+      <feGaussianBlur stdDeviation="24" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Mask for Mirage Scanlines -->
+    <pattern id="scanlines" width="100" height="8" patternUnits="userSpaceOnUse">
+      <rect width="100" height="4" fill="#ffffff" opacity="0.9"/>
+      <rect y="4" width="100" height="4" fill="#000000" opacity="0.2"/>
+    </pattern>
+  </defs>
+
+  <!-- Squircle Canvas Base -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="2.5"/>
+
+  <!-- Subtle Background Grid/Constellation -->
+  <g opacity="0.07" stroke="#38bdf8" stroke-width="1">
+    <line x1="96" y1="16" x2="96" y2="496"/>
+    <line x1="176" y1="16" x2="176" y2="496"/>
+    <line x1="256" y1="16" x2="256" y2="496" stroke-dasharray="4,8" stroke-width="1.5"/>
+    <line x1="336" y1="16" x2="336" y2="496"/>
+    <line x1="416" y1="16" x2="416" y2="496"/>
+    
+    <line x1="16" y1="96" x2="496" y2="96"/>
+    <line x1="16" y1="176" x2="496" y2="176"/>
+    <line x1="16" y1="256" x2="496" y2="256" stroke-dasharray="4,8" stroke-width="1.5"/>
+    <line x1="16" y1="336" x2="496" y2="336"/>
+    <line x1="16" y1="416" x2="496" y2="416"/>
+  </g>
+
+  <!-- Deep Ambient Glow behind the logo -->
+  <g filter="url(#ambientGlow)" opacity="0.45">
+    <ellipse cx="256" cy="200" rx="110" ry="90" fill="#00f2fe"/>
+    <ellipse cx="256" cy="310" rx="120" ry="70" fill="#8b5cf6"/>
+  </g>
+
+  <!-- === THE SEED & MIRAGE LOGO MARK === -->
+  <g id="logoMark">
+
+    <!-- UPPER SEED HEAD: Sharp, luminous, physical -->
+    <!-- Represents the BitTorrent Seeder / Upload Sprout -->
+    <g filter="url(#neonGlow)">
+      <!-- Outer Arrow Wings -->
+      <path d="M 256,86 
+               C 274,122 344,204 344,242
+               C 344,250 340,256 332,256
+               L 286,256
+               C 280,256 276,252 276,246
+               C 276,220 264,178 256,156
+               C 248,178 236,220 236,246
+               C 236,252 232,256 226,256
+               L 180,256
+               C 172,256 168,250 168,242
+               C 168,204 238,122 256,86 Z" 
+            fill="url(#seedGrad)"/>
+
+      <!-- Inner Ascending Data Pulse (Uploading core) -->
+      <path d="M 256,128 
+               C 264,152 296,204 296,226
+               C 296,230 292,234 286,234
+               L 268,234
+               C 264,234 260,230 260,226
+               L 260,198
+               C 260,194 252,194 252,198
+               L 252,226
+               C 252,230 248,234 244,234
+               L 226,234
+               C 220,234 216,230 216,226
+               C 216,204 248,152 256,128 Z" 
+            fill="#ffffff" opacity="0.95"/>
+
+      <!-- Floating Upload Data Sparks -->
+      <circle cx="256" cy="66" r="4.5" fill="#ffffff" filter="url(#subtleGlow)"/>
+      <circle cx="244" cy="50" r="2.5" fill="#00f2fe" opacity="0.8"/>
+      <circle cx="268" cy="42" r="2" fill="#38bdf8" opacity="0.7"/>
+    </g>
+
+    <!-- TRANSITION / PHASE BOUNDARY -->
+    <!-- Thin energetic horizontal emitter line -->
+    <g filter="url(#subtleGlow)">
+      <rect x="156" y="266" width="200" height="4" rx="2" fill="#00f2fe" opacity="0.95"/>
+      <circle cx="256" cy="268" r="3.5" fill="#ffffff"/>
+    </g>
+
+    <!-- LOWER MIRAGE BODY: Ethereal, fragmented, heatwave distortion -->
+    <!-- Represents the simulated/mirage presence across the tracker horizon -->
+    <g filter="url(#subtleGlow)">
+      <!-- Wave Layer 1: Slight refraction shift right -->
+      <path d="M 166,280 L 342,280 C 347,280 349,285 345,288 L 333,296 C 330,298 327,298 323,298 L 185,298 C 181,298 178,298 175,296 L 163,288 C 159,285 161,280 166,280 Z" 
+            fill="url(#mirageGrad1)" opacity="0.90"/>
+
+      <!-- Wave Layer 2: Offset wave ripple (heat haze illusion) -->
+      <path d="M 174,306 L 334,306 C 339,306 341,311 337,314 L 327,322 C 324,324 321,324 317,324 L 191,324 C 187,324 184,324 181,322 L 171,314 C 167,311 169,306 174,306 Z" 
+            fill="url(#mirageGrad1)" opacity="0.75" transform="translate(-4, 0)"/>
+
+      <!-- Wave Layer 3: Expanding mirage ripple into violet -->
+      <path d="M 186,332 L 322,332 C 326,332 328,337 325,340 L 317,348 C 314,350 311,350 307,350 L 201,350 C 197,350 194,350 191,348 L 183,340 C 180,337 182,332 186,332 Z" 
+            fill="url(#mirageGrad2)" opacity="0.58" transform="translate(6, 0)"/>
+
+      <!-- Wave Layer 4: Distant shimmer reflection -->
+      <path d="M 202,358 L 306,358 C 310,358 312,363 309,366 L 303,372 C 300,374 297,374 293,374 L 215,374 C 211,374 208,374 205,372 L 199,366 C 196,363 198,358 202,358 Z" 
+            fill="url(#mirageGrad2)" opacity="0.40" transform="translate(-8, 0)"/>
+
+      <!-- Wave Layer 5: Dissolving horizon echo -->
+      <path d="M 220,382 L 288,382 C 292,382 294,386 291,389 L 287,394 C 285,396 282,396 279,396 L 229,396 C 226,396 223,396 221,394 L 217,389 C 214,386 216,382 220,382 Z" 
+            fill="#ec4899" opacity="0.24" transform="translate(4, 0)"/>
+
+      <!-- Wave Layer 6: Ghost tip / final refraction point -->
+      <ellipse cx="256" cy="406" rx="22" ry="3" fill="#f43f5e" opacity="0.15"/>
+      <ellipse cx="256" cy="416" rx="10" ry="1.5" fill="#f43f5e" opacity="0.08"/>
+    </g>
+
+    <!-- MIRAGE REFLECTION ECHO (Water / Heat Mirage Inverted Mirage Silhouette) -->
+    <g opacity="0.12" transform="scale(1, -0.4) translate(0, -960)" filter="url(#ambientGlow)">
+      <path d="M 256,86 
+               C 274,122 344,204 344,242
+               L 168,242
+               C 168,204 238,122 256,86 Z" 
+            fill="url(#mirageGrad2)"/>
+    </g>
+
+    <!-- Lateral Horizon Guidemarks / Tracker Synch indicators -->
+    <g stroke="url(#borderGrad)" stroke-width="1.5" opacity="0.6">
+      <line x1="90" y1="268" x2="136" y2="268" stroke-linecap="round"/>
+      <circle cx="142" cy="268" r="2" fill="#00f2fe"/>
+      
+      <line x1="376" y1="268" x2="422" y2="268" stroke-linecap="round"/>
+      <circle cx="370" cy="268" r="2" fill="#00f2fe"/>
+    </g>
+
+  </g>
+</svg>
